@@ -181,7 +181,7 @@ nav button.on{color:var(--off);border-top-color:var(--red)}
 
   <div class="nrm">
     <h3><span class="b">3</span>PREMIO DEL MES</h3>
-    <p>Los <b>7 primeros</b> de la tabla mensual suman <b>1 punto extra</b> a la clasificación general.</p>
+    <p>Los <b>8 primeros</b> de la tabla mensual suman <b>1 punto extra</b> a la clasificación general. Son 8 porque es lo que mide un equipo de Doble Área.</p>
     <p>La tabla del mes se cierra el día 1 y no se modifica. A igualdad de puntos manda el <b>porcentaje de victorias</b>, que puedes ver en la columna %V.</p>
     <p>El punto extra va solo a la general: no cuenta para la tabla del mes siguiente.</p>
   </div>
@@ -375,7 +375,7 @@ function renderMes() {
       '<div class="mes-d">Mes cerrado. Estos <b>' + prem.length + ' jugadores</b> se llevaron el ' +
       '<b>+1 punto</b> para la general.</div></div>'
     : '<div class="mes-h"><div class="mes-t">Zona de premio</div>' +
-      '<div class="mes-d">Los <b>7 primeros</b> ganan <b>+1 punto</b> para la general.<br>' +
+      '<div class="mes-d">Los <b>' + DA.PREMIADOS_MES + ' primeros</b> ganan <b>+1 punto</b> para la general.<br>' +
       'Ahora mismo hay <b>' + prem.length + ' dentro</b>. A igualdad de puntos manda el %V.</div></div>';
 
   w.innerHTML = nav + cab +
