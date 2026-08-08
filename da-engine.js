@@ -10,7 +10,8 @@
    · Sin ganador (empate arriba) ...... 1 pt a los equipos empatados
    · Resto ............................ 0 pts
    · Solo puntúa quien juega. No jugar no resta.
-   · Premio del mes: +1 pt a la general para los 7 primeros del mes.
+   · Premio del mes: +1 pt a la general para los 8 primeros del mes
+     (8 = un equipo completo de Doble Área).
      El mes solo reparte cuando está CERRADO (no el mes en curso).
      El +1 no cuenta para la tabla del mes siguiente.
    · Temporada desde agosto 2026, sin reinicio.
@@ -18,12 +19,13 @@
 const DA = (function () {
 
   /* ── ÚNICO INTERRUPTOR DE REGLAS ──────────────────────────────────
-     true  → a igualdad de puntos en el corte del puesto 7 manda el
-             % de victorias. Media ≈ 7,2 premiados de 24.
-     false → premio para todos los empatados en el puesto 7.
-             Media ≈ 8 premiados, con meses de 13 o más.
+     true  → a igualdad de puntos en el corte manda el % de victorias.
+     false → premio para todos los empatados en el último puesto.
      Ver nota al final del fichero.                                   */
   const DESEMPATE_POR_PCT = true;
+
+  /* Cuántos jugadores se llevan el +1 cada mes. 8 = un equipo entero. */
+  const PREMIADOS_MES = 8;
 
   const TEAMS = ['azul', 'verde', 'peto'];
   const TEAM_LBL = { azul: 'Azul', verde: 'Verde', peto: 'Sin peto' };
@@ -84,7 +86,7 @@ const DA = (function () {
   function premiadosMes(players, sessions, mes) {
     const t = tablaMes(players, sessions, mes);
     if (!t.length) return [];
-    const c = t[Math.min(6, t.length - 1)];
+    const c = t[Math.min(PREMIADOS_MES - 1, t.length - 1)];
     if (DESEMPATE_POR_PCT)
       return t.filter(r => r.pts > c.pts || (r.pts === c.pts && r.pct >= c.pct));
     return t.filter(r => r.pts >= c.pts);
@@ -187,7 +189,7 @@ const DA = (function () {
 
   const fechaCorta = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
 
-  return { TEAMS, TEAM_LBL, TEMPORADA_DESDE, DESEMPATE_POR_PCT, MESES,
+  return { TEAMS, TEAM_LBL, TEMPORADA_DESDE, DESEMPATE_POR_PCT, PREMIADOS_MES, MESES,
            mesDe, mesActual, nombreMes, fechaCorta, mesSuma,
            ptsSesion, acumula, ordena, tablaMes, premiadosMes,
            mesesCerrados, mesesConSesiones, esCerrado, campeonMes, palmares,
@@ -197,9 +199,9 @@ const DA = (function () {
 /* ═══════════════════════════════════════════════════════════════════════
    NOTA SOBRE DESEMPATE_POR_PCT
    Los puntos van de 3 en 3, así que en un mes hay pocos valores distintos
-   repartidos entre 24 jugadores y los empates son masivos. Simulando 40
-   meses de 12 sesiones: sin desempate el premio cae de media en 8
-   jugadores (con meses de 13 o más); desempatando por % de victorias,
-   en 7,2. Por eso está activado. Es el único cambio necesario para
-   volver atrás.
+   repartidos entre 24 jugadores y los empates son masivos. Sin desempate,
+   el corte se lleva por delante a todo el grupo empatado y el premio
+   acaba cayendo en bastantes más de los previstos. Desempatar por % de
+   victorias lo mantiene cerca de PREMIADOS_MES. Por eso está activado;
+   es el único cambio necesario para volver atrás.
 ═══════════════════════════════════════════════════════════════════════ */
