@@ -49,6 +49,16 @@ h2{font-family:var(--disp);font-size:21px;letter-spacing:.6px;margin-bottom:3px}
   font-weight:700;margin:22px 0 10px;display:flex;align-items:center;gap:9px}
 .sec-lbl:after{content:'';flex:1;height:1px;background:var(--bdr)}
 
+.editbar{background:rgba(232,25,44,.12);border:1px solid var(--red);border-left:4px solid var(--red);
+  padding:11px 13px;margin-bottom:12px;display:none;align-items:center;gap:10px}
+.editbar.on{display:flex}
+.editbar .t{flex:1;font-size:13px;line-height:1.35;color:var(--off)}
+.editbar .t b{font-weight:700}
+.editbar button{background:none;border:1px solid var(--red);color:var(--red);padding:7px 11px;
+  font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;cursor:pointer;white-space:nowrap}
+.sess-acts{display:flex;gap:7px;flex-wrap:wrap}
+.edt{background:none;border:1px solid var(--bdr);color:var(--off);padding:7px 12px;font-size:11px;
+  letter-spacing:1.2px;text-transform:uppercase;font-weight:700;cursor:pointer}
 .date-wrap input{width:100%;background:var(--panel);border:1px solid var(--bdr);padding:13px 14px;
   font-family:var(--mono);font-size:15px;color:var(--off)}
 .counts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
@@ -173,6 +183,10 @@ h2{font-family:var(--disp);font-size:21px;letter-spacing:.6px;margin-bottom:3px}
 <div class="page on" id="pg-reg">
   <h2>Registrar sesión</h2>
   <p class="hint">Toca cada jugador para asignarlo: Azul → Verde → Sin peto → No juega.</p>
+  <div class="editbar" id="editbar">
+    <div class="t">Editando la sesión del <b id="edit-fecha"></b>. Al guardar se sustituye, no se crea otra.</div>
+    <button onclick="cancelEdit()">Cancelar</button>
+  </div>
   <div class="date-wrap"><input type="date" id="f-date"></div>
   <div class="sec-lbl">Equipos</div>
   <div class="counts">
@@ -203,7 +217,7 @@ h2{font-family:var(--disp);font-size:21px;letter-spacing:.6px;margin-bottom:3px}
 
 <div class="page" id="pg-his">
   <h2>Historial</h2>
-  <p class="hint">Toca una sesión para ver los equipos.</p>
+  <p class="hint">Toca una sesión para ver los equipos, editarla o eliminarla.</p>
   <div id="his-box"></div>
 </div>
 
@@ -226,10 +240,10 @@ h2{font-family:var(--disp);font-size:21px;letter-spacing:.6px;margin-bottom:3px}
 </div>
 
 <nav>
-  <button class="on" onclick="nav('reg',this)"><span class="ico">✍️</span>Registrar</button>
-  <button onclick="nav('cla',this)"><span class="ico">🏆</span>Clasif.</button>
-  <button onclick="nav('his',this)"><span class="ico">📅</span>Historial</button>
-  <button onclick="nav('pla',this)"><span class="ico">👥</span>Plantilla</button>
+  <button class="on" id="nav-reg" onclick="nav('reg',this)"><span class="ico">✍️</span>Registrar</button>
+  <button id="nav-cla" onclick="nav('cla',this)"><span class="ico">🏆</span>Clasif.</button>
+  <button id="nav-his" onclick="nav('his',this)"><span class="ico">📅</span>Historial</button>
+  <button id="nav-pla" onclick="nav('pla',this)"><span class="ico">👥</span>Plantilla</button>
 </nav>
 <div id="toast"></div>
 
@@ -313,9 +327,10 @@ function fallo(msg, e) { console.error(msg, e); toast(msg, true); }
 const activos = () => PLAYERS.filter(p => p.active !== false);
 
 /* ═══════════ INTERFAZ ═══════════ */
-let assign = {}, winners = [];
+let assign = {}, winners = [], editId = null;
 
 function nav(id, el) {
+  el = el || document.getElementById('nav-' + id);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.getElementById('pg-' + id).classList.add('on');
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
@@ -381,21 +396,57 @@ function updRes() {
 }
 function clearForm() { assign = {}; winners = []; renderGrid(); updRes(); }
 
+/* ── EDICIÓN DE UNA SESIÓN YA GUARDADA ──
+   Carga la sesión en el formulario de registro. Al guardar se
+   sobrescribe ese mismo documento en lugar de crear uno nuevo. */
+function editSession(id) {
+  const s = SESSIONS.find(x => x.id === id);
+  if (!s) return toast('Sesión no encontrada', true);
+  editId = id;
+  assign = Object.assign({}, s.teams || {});
+  winners = (s.winners || []).slice();
+  document.getElementById('f-date').value = s.date;
+  document.getElementById('edit-fecha').textContent = DA.fechaCorta(s.date);
+  document.getElementById('editbar').classList.add('on');
+  document.getElementById('btn-save').textContent = 'Actualizar';
+  nav('reg');
+  renderGrid(); updRes();
+}
+function cancelEdit() {
+  editId = null;
+  document.getElementById('editbar').classList.remove('on');
+  document.getElementById('btn-save').textContent = 'Guardar';
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+  clearForm();
+}
+
 async function saveSession() {
   const date = document.getElementById('f-date').value;
   if (!date) return toast('Falta la fecha', true);
-  const ya = SESSIONS.filter(s => s.date === date).length;
-  if (ya && !confirm('Ya hay ' + ya + ' sesión(es) registrada(s) el ' + DA.fechaCorta(date) + '.\n¿Guardar otra más?')) return;
+  /* El aviso de duplicado solo aplica al crear: al editar se
+     sobrescribe la misma sesión y no hay nada que duplicar. */
+  if (!editId) {
+    const ya = SESSIONS.filter(s => s.date === date).length;
+    if (ya && !confirm('Ya hay ' + ya + ' sesión(es) registrada(s) el ' + DA.fechaCorta(date) +
+      '.\n¿Guardar otra más?\n\nSi lo que quieres es corregir la anterior, cancela y usa Editar en el Historial.')) return;
+  }
   const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = 'Guardando…';
+  const editando = !!editId;
+  btn.disabled = true; btn.textContent = editando ? 'Actualizando…' : 'Guardando…';
   try {
-    await FS.addDoc(FS.collection(db, 'da_sessions'), {
-      date: date, teams: Object.assign({}, assign), winners: winners.slice(),
-      createdAt: FS.serverTimestamp()
-    });
-    toast('Sesión guardada'); clearForm();
-  } catch (e) { fallo('No se pudo guardar', e); }
-  btn.textContent = 'Guardar'; updRes();
+    const datos = { date: date, teams: Object.assign({}, assign), winners: winners.slice() };
+    if (editando) {
+      datos.updatedAt = FS.serverTimestamp();
+      await FS.updateDoc(FS.doc(db, 'da_sessions', editId), datos);
+      toast('Sesión actualizada'); cancelEdit();
+    } else {
+      datos.createdAt = FS.serverTimestamp();
+      await FS.addDoc(FS.collection(db, 'da_sessions'), datos);
+      toast('Sesión guardada'); clearForm();
+    }
+  } catch (e) { fallo(editando ? 'No se pudo actualizar' : 'No se pudo guardar', e); }
+  btn.textContent = editId ? 'Actualizar' : 'Guardar';
+  updRes();
 }
 
 function renderCla() {
@@ -431,9 +482,10 @@ function renderHis() {
       '<div class="sess-h"><span class="sess-d">' + DA.fechaCorta(s.date) + '</span>' +
       '<div class="sess-w">' + chips + '</div></div>' +
       '<div class="sess-m">' + n + ' jugadores · ' + ((s.winners || []).length === 1 ? 'ganador único' : 'empate arriba') + '</div>' +
-      '<div class="sess-body">' + rost +
-      '<button class="del" onclick="event.stopPropagation();borrar(\'' + s.id + '\',\'' + s.date + '\')">Eliminar sesión</button>' +
-      '</div></div>';
+      '<div class="sess-body">' + rost + '<div class="sess-acts">' +
+      '<button class="edt" onclick="event.stopPropagation();editSession(\'' + s.id + '\')">Editar</button>' +
+      '<button class="del" onclick="event.stopPropagation();borrar(\'' + s.id + '\',\'' + s.date + '\')">Eliminar</button>' +
+      '</div></div></div>';
   }).join('');
 }
 async function borrar(id, date) {
