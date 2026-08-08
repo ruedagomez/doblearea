@@ -93,6 +93,30 @@ nav button.on{color:var(--off);border-top-color:var(--red)}
 .lg-n{font-size:15px;font-weight:700;margin-top:5px;line-height:1.15}
 .lg-v{font-family:var(--mono);font-size:11px;color:var(--red);margin-top:3px;font-weight:600}
 
+.mnav{display:flex;align-items:stretch;gap:7px;margin-bottom:12px}
+.mnav button{flex:0 0 46px;background:var(--panel);border:1px solid var(--bdr);color:var(--off);
+  font-size:20px;line-height:1;cursor:pointer;font-family:var(--mono)}
+.mnav button:disabled{color:#333;cursor:default}
+.mnav .cur{flex:1;background:var(--panel);border:1px solid var(--bdr);text-align:center;padding:9px 4px}
+.mnav .cur .m{font-family:var(--disp);font-size:24px;letter-spacing:.8px;line-height:1}
+.mnav .cur .st{font-size:9px;letter-spacing:1.8px;text-transform:uppercase;font-weight:700;margin-top:4px;color:var(--faint)}
+.mnav .cur .st.cerrado{color:var(--gold)}
+.bchip{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);
+  border:1px solid var(--gold);padding:1px 4px;margin-left:6px;white-space:nowrap}
+
+.palm{display:flex;flex-direction:column;gap:6px}
+.pm{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--bdr);
+  border-left:3px solid var(--gold);padding:10px 13px}
+.pm-m{font-family:var(--disp);font-size:16px;letter-spacing:.8px;color:var(--gold);
+  flex:0 0 78px;line-height:1}
+.pm-av{width:34px;height:34px;flex:0 0 34px;border-radius:50%;object-fit:cover;background:var(--panel2);
+  border:1px solid var(--bdr)}
+.pm-i{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--mid)}
+.pm-t{flex:1;min-width:0}
+.pm-n{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.pm-s{font-size:11px;color:var(--faint);letter-spacing:.4px;margin-top:2px}
+.pm-p{font-family:var(--mono);font-size:17px;font-weight:700}
+
 .mes-h{background:var(--panel);border-left:3px solid var(--gold);padding:13px 15px;margin-bottom:16px}
 .mes-t{font-family:var(--disp);font-size:22px;letter-spacing:.5px;line-height:1}
 .mes-d{font-size:13px;color:var(--mid);margin-top:5px;line-height:1.45}
@@ -265,11 +289,26 @@ function renderGen() {
       im + '<div class="pd-n">' + r.nick + '</div><div class="pd-p">' + r.pts + '</div></div>';
   }).join('');
 
+  /* Palmarés: solo aparece cuando hay al menos un mes cerrado */
+  const pal = DA.palmares(PLAYERS, SESSIONS).filter(x => x.campeon);
+  const palHTML = pal.length
+    ? '<div class="sec-lbl">Palmarés</div><div class="palm">' + pal.map(x => {
+        const c = x.campeon;
+        const im = c.photo ? '<img class="pm-av" src="' + c.photo + '" alt="">'
+          : '<div class="pm-av pm-i">' + (c.nick || '??').slice(0, 2).toUpperCase() + '</div>';
+        return '<div class="pm"><div class="pm-m">' + x.nombre + '</div>' + im +
+          '<div class="pm-t"><div class="pm-n">' + c.nick + '</div>' +
+          '<div class="pm-s">' + x.premiados.length + ' premiados · ' + c.j + ' sesiones</div></div>' +
+          '<div class="pm-p">' + c.pts + '</div></div>';
+      }).join('') + '</div>'
+    : '';
+
   w.innerHTML =
     '<div class="sec-lbl">Podio general</div><div class="podio">' + podio + '</div>' +
     '<div class="sec-lbl">Logros</div><div class="logros">' +
       lg.map(x => '<div class="lg"><div class="lg-t">' + x.t + '</div><div class="lg-n">' + x.n +
         '</div><div class="lg-v">' + x.v + '</div></div>').join('') + '</div>' +
+    palHTML +
     '<div class="sec-lbl">Clasificación · Temporada 26/27</div>' +
     '<table class="tbl"><thead><tr><th></th><th></th><th>Jugador</th>' +
     '<th class="c hide-s">Últimas 5</th><th class="c">J</th><th class="c">%V</th><th class="r">Pts</th></tr></thead><tbody>' +
@@ -288,21 +327,58 @@ function renderGen() {
     '<div class="foot">RACING CLUB PORTUENSE · 2026/27</div>';
 }
 
+/* Mes que se está mirando. Null = todavía no fijado; se pone en el mes
+   en curso la primera vez y a partir de ahí lo manda el usuario, para
+   que un refresco de Firestore no lo devuelva al mes actual. */
+let mesVista = null;
+
+function limitesMes() {
+  const con = DA.mesesConSesiones(SESSIONS);
+  const hoy = DA.mesActual();
+  return { min: con.length ? con[0] : hoy, max: hoy };
+}
+function moverMes(n) {
+  const L = limitesMes();
+  const m = DA.mesSuma(mesVista || DA.mesActual(), n);
+  if (m < L.min || m > L.max) return;
+  mesVista = m; renderMes(); window.scrollTo(0, 0);
+}
+
 function renderMes() {
   const w = document.getElementById('mes-wrap');
-  const mes = DA.mesActual();
+  const L = limitesMes();
+  if (!mesVista) mesVista = DA.mesActual();
+  if (mesVista < L.min) mesVista = L.min;
+  if (mesVista > L.max) mesVista = L.max;
+
+  const mes = mesVista, cerrado = DA.esCerrado(mes);
+  const nav =
+    '<div class="mnav">' +
+      '<button onclick="moverMes(-1)"' + (mes <= L.min ? ' disabled' : '') + '>‹</button>' +
+      '<div class="cur"><div class="m">' + DA.nombreMes(mes) + '</div>' +
+        '<div class="st ' + (cerrado ? 'cerrado' : '') + '">' +
+        (cerrado ? 'Mes cerrado' : 'En curso') + '</div></div>' +
+      '<button onclick="moverMes(1)"' + (mes >= L.max ? ' disabled' : '') + '>›</button>' +
+    '</div>';
+
   const arr = DA.tablaMes(PLAYERS, SESSIONS, mes);
   if (!arr.length) {
-    w.innerHTML = '<div class="mes-h"><div class="mes-t">' + DA.nombreMes(mes) + '</div>' +
-      '<div class="mes-d">Todavía no hay sesiones este mes.</div></div>';
+    w.innerHTML = nav + '<div class="empty">No hay sesiones en ' + DA.nombreMes(mes).toLowerCase() + '.</div>';
     return;
   }
   const prem = DA.premiadosMes(PLAYERS, SESSIONS, mes);
   const ids = {}; prem.forEach(r => ids[r.id] = 1);
+  const camp = arr[0];
 
-  w.innerHTML = '<div class="mes-h"><div class="mes-t">' + DA.nombreMes(mes) + '</div>' +
-    '<div class="mes-d">Mes en curso. Los <b>7 primeros</b> ganan <b>+1 punto</b> para la general.<br>' +
-    'Ahora mismo hay <b>' + prem.length + ' en zona de premio</b>. A igualdad de puntos manda el %V.</div></div>' +
+  const cab = cerrado
+    ? '<div class="mes-h"><div class="mes-t">Campeón · ' + camp.nick + '</div>' +
+      '<div class="mes-d">Mes cerrado. Estos <b>' + prem.length + ' jugadores</b> se llevaron el ' +
+      '<b>+1 punto</b> para la general.</div></div>'
+    : '<div class="mes-h"><div class="mes-t">Zona de premio</div>' +
+      '<div class="mes-d">Los <b>7 primeros</b> ganan <b>+1 punto</b> para la general.<br>' +
+      'Ahora mismo hay <b>' + prem.length + ' dentro</b>. A igualdad de puntos manda el %V.</div></div>';
+
+  w.innerHTML = nav + cab +
     '<table class="tbl"><thead><tr><th></th><th>Jugador</th><th class="c hide-s">Últimas 5</th>' +
     '<th class="c">J</th><th class="c">%V</th><th class="r">Pts</th></tr></thead><tbody>' +
     arr.map((r, i) => {
@@ -310,7 +386,8 @@ function renderMes() {
       const cut = inb && !ids[(arr[i + 1] || {}).id];
       return '<tr class="' + (inb ? 'bonus' : '') + ' ' + (cut ? 'cut' : '') + '">' +
         '<td><div class="pos ' + (r.pos <= 3 ? 'top' : '') + '">' + r.pos + '</div></td>' +
-        '<td><div class="nmcell">' + av(r) + '<span class="n">' + r.nick + '</span></div></td>' +
+        '<td><div class="nmcell">' + av(r) + '<span class="n">' + r.nick + '</span>' +
+        (cerrado && inb ? '<span class="bchip">+1</span>' : '') + '</div></td>' +
         '<td class="c hide-s">' + filaForm(r.form) + '</td>' +
         '<td class="c num">' + r.j + '</td><td class="c num">' + r.pct + '%</td>' +
         '<td class="r"><span class="pts">' + r.pts + '</span></td></tr>';
