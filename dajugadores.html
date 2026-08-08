@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Doble Área · La Batalla de los Petos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#E8192C; --black:#0B0B0B; --off:#F3F3F1;
+  --panel:#141414; --panel2:#1C1C1C; --bdr:#2A2A2A;
+  --mid:#8A8A8A; --faint:#5A5A5A;
+  --azul:#1E5FD8; --verde:#17A34A; --peto:#F3F3F1; --gold:#D9A521;
+  --disp:'Bebas Neue',sans-serif; --lbl:'Barlow Condensed',sans-serif; --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--black);color:var(--off);font-family:var(--lbl);font-size:16px;
+  padding-bottom:84px;overscroll-behavior:none}
+button{font-family:inherit;font-size:inherit;color:inherit}
+
+header{position:relative;overflow:hidden;border-bottom:2px solid var(--red);
+  padding:22px 16px 18px;padding-top:calc(22px + env(safe-area-inset-top))}
+header:before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(115deg,transparent 0 22px,rgba(232,25,44,.05) 22px 24px)}
+.h-in{position:relative;display:flex;align-items:center;gap:13px}
+.h-badge{width:46px;height:46px;border-radius:50%;background:var(--red);flex:0 0 46px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:24px;color:#fff}
+.h-tit{font-family:var(--disp);font-size:34px;line-height:.9;letter-spacing:.5px}
+.h-sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--red);font-weight:700;margin-top:4px}
+
+nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:grid;grid-template-columns:repeat(3,1fr);
+  background:var(--panel);border-top:1px solid var(--bdr);padding-bottom:env(safe-area-inset-bottom)}
+nav button{background:none;border:none;padding:14px 4px;cursor:pointer;color:var(--faint);
+  font-size:12px;letter-spacing:1.6px;text-transform:uppercase;font-weight:700;
+  border-top:3px solid transparent;transition:color .15s}
+nav button.on{color:var(--off);border-top-color:var(--red)}
+
+.page{display:none;padding:16px}
+.page.on{display:block}
+.sec-lbl{font-size:10px;letter-spacing:2.4px;text-transform:uppercase;color:var(--faint);
+  font-weight:700;margin:26px 0 12px;display:flex;align-items:center;gap:9px}
+.sec-lbl:first-child{margin-top:4px}
+.sec-lbl:after{content:'';flex:1;height:1px;background:var(--bdr)}
+
+/* ── PODIO ── */
+.podio{display:grid;grid-template-columns:1fr 1.18fr 1fr;gap:7px;align-items:end;margin-bottom:6px}
+.pd{background:var(--panel);border:1px solid var(--bdr);padding:14px 6px 12px;text-align:center;position:relative}
+.pd.p1{border-color:var(--red);padding-top:20px;padding-bottom:16px;background:rgba(232,25,44,.07)}
+.pd-av{width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 9px;display:block;
+  border:2px solid var(--bdr);background:var(--panel2)}
+.pd.p1 .pd-av{width:66px;height:66px;border-color:var(--red)}
+.pd-i{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;color:var(--mid)}
+.pd-n{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.pd-p{font-family:var(--mono);font-size:19px;font-weight:700;margin-top:4px}
+.pd.p1 .pd-p{font-size:25px;color:var(--red)}
+.pd-r{position:absolute;top:6px;left:50%;transform:translateX(-50%);font-family:var(--disp);
+  font-size:13px;color:var(--faint);letter-spacing:1px}
+.pd.p1 .pd-r{color:var(--red)}
+
+/* ── TABLA ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:var(--faint);font-weight:700;
+  padding:0 4px 9px;text-align:left;border-bottom:1px solid var(--bdr)}
+.tbl td{padding:10px 4px;border-bottom:1px solid #1A1A1A;vertical-align:middle}
+.tbl th.c,.tbl td.c{text-align:center} .tbl th.r,.tbl td.r{text-align:right}
+.tbl tr.bonus td{background:rgba(217,165,33,.07)}
+.tbl tr.cut td{border-bottom:2px solid var(--gold)}
+.pos{width:27px;height:27px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--mid)}
+.pos.top{background:var(--red);color:#fff}
+.nmcell{display:flex;align-items:center;gap:9px;min-width:0}
+.nmcell .n{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av-s{width:28px;height:28px;flex:0 0 28px;border-radius:50%;object-fit:cover;background:var(--panel2)}
+.av-i{width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--panel2);
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--mid)}
+.pts{font-family:var(--mono);font-size:17px;font-weight:700}
+.num{font-family:var(--mono);font-size:13px;color:var(--mid)}
+.mv{font-family:var(--mono);font-size:10px;width:26px;display:inline-block}
+.mv.up{color:var(--verde)} .mv.dn{color:var(--red)} .mv.eq{color:var(--faint)}
+.form{display:flex;gap:3px;justify-content:center}
+.fd{width:15px;height:15px;border-radius:50%;font-family:var(--mono);font-size:8px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.fd.v{background:var(--verde);color:#fff} .fd.e{background:#6B6B6B;color:#fff}
+.fd.d{background:var(--panel2);color:var(--faint);border:1px solid var(--bdr)}
+.racha{font-size:11px;color:var(--verde);font-weight:600;margin-top:2px;letter-spacing:.3px}
+.hide-s{display:none} @media(min-width:560px){.hide-s{display:table-cell}}
+
+/* ── LOGROS ── */
+.logros{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.lg{flex:0 0 auto;background:var(--panel);border:1px solid var(--bdr);border-top:3px solid var(--red);
+  padding:11px 14px;min-width:132px}
+.lg-t{font-size:9px;letter-spacing:1.6px;text-transform:uppercase;color:var(--faint);font-weight:700}
+.lg-n{font-size:15px;font-weight:700;margin-top:5px;line-height:1.15}
+.lg-v{font-family:var(--mono);font-size:11px;color:var(--red);margin-top:3px;font-weight:600}
+
+/* ── MES ── */
+.mes-h{background:var(--panel);border-left:3px solid var(--gold);padding:13px 15px;margin-bottom:16px}
+.mes-t{font-family:var(--disp);font-size:22px;letter-spacing:.5px;line-height:1}
+.mes-d{font-size:13px;color:var(--mid);margin-top:5px;line-height:1.45}
+.mes-d b{color:var(--gold);font-weight:600}
+
+/* ── NORMAS ── */
+.nrm{background:var(--panel);border:1px solid var(--bdr);padding:16px 17px;margin-bottom:9px}
+.nrm h3{font-family:var(--disp);font-size:19px;letter-spacing:.6px;margin-bottom:9px;
+  display:flex;align-items:center;gap:9px}
+.nrm h3 .b{width:22px;height:22px;border-radius:50%;background:var(--red);flex:0 0 22px;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+.nrm p{font-size:15px;line-height:1.6;color:#C8C8C6;margin-bottom:9px}
+.nrm p:last-child{margin-bottom:0}
+.nrm b{color:var(--off);font-weight:600}
+.pt-row{display:flex;gap:7px;margin:12px 0}
+.ptb{flex:1;background:var(--panel2);border:1px solid var(--bdr);padding:11px 5px;text-align:center}
+.ptb .v{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
+.ptb .l{font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--mid);margin-top:5px;font-weight:600}
+.ptb.g .v{color:var(--verde)} .ptb.e .v{color:#9A9A9A} .ptb.p .v{color:var(--faint)}
+
+.btn{border:none;padding:15px;font-size:13px;letter-spacing:1.8px;text-transform:uppercase;
+  font-weight:700;cursor:pointer;width:100%;background:var(--red);color:#fff;margin-top:18px}
+.foot{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);
+  letter-spacing:1px;margin-top:26px}
+.empty{text-align:center;padding:50px 20px;color:var(--faint);font-size:14px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-in">
+    <div class="h-badge">DA</div>
+    <div><div class="h-tit">DOBLE ÁREA</div><div class="h-sub">La Batalla de los Petos</div></div>
+  </div>
+</header>
+
+<div class="page on" id="pg-gen">
+  <div class="sec-lbl">Podio general</div>
+  <div class="podio" id="podio"></div>
+  <div class="sec-lbl">Logros</div>
+  <div class="logros" id="logros"></div>
+  <div class="sec-lbl">Clasificación · Temporada 26/27</div>
+  <div id="gen-box"></div>
+  <button class="btn" onclick="compartir()">📲 Compartir clasificación</button>
+  <div class="foot">RACING CLUB PORTUENSE · 2026/27</div>
+</div>
+
+<div class="page" id="pg-mes">
+  <div class="mes-h">
+    <div class="mes-t" id="mes-t">AGOSTO</div>
+    <div class="mes-d" id="mes-d"></div>
+  </div>
+  <div id="mes-box"></div>
+  <div class="foot">RACING CLUB PORTUENSE · 2026/27</div>
+</div>
+
+<div class="page" id="pg-nrm">
+  <div class="nrm">
+    <h3><span class="b">1</span>CÓMO SE PUNTÚA</h3>
+    <p>Cada sesión de Doble Área enfrenta a tres equipos: <b>azul</b>, <b>verde</b> y <b>sin peto</b>. Los equipos cambian cada día.</p>
+    <div class="pt-row">
+      <div class="ptb g"><div class="v">3</div><div class="l">Ganas</div></div>
+      <div class="ptb e"><div class="v">1</div><div class="l">Empate arriba</div></div>
+      <div class="ptb p"><div class="v">0</div><div class="l">Pierdes</div></div>
+    </div>
+    <p>El equipo ganador de la sesión suma <b>3 puntos</b>. Si no hay ganador claro, los equipos empatados arriba suman <b>1 punto</b> cada uno. El resto, <b>0</b>.</p>
+    <p>Si hay un ganador único, los otros dos equipos suman 0 aunque hayan empatado entre ellos.</p>
+  </div>
+
+  <div class="nrm">
+    <h3><span class="b">2</span>QUIÉN PUNTÚA</h3>
+    <p>Solo suma <b>quien juega</b>. Si no entrenas ese día no puntúas, pero tampoco pierdes puntos.</p>
+  </div>
+
+  <div class="nrm">
+    <h3><span class="b">3</span>PREMIO DEL MES</h3>
+    <p>Los <b>7 primeros</b> de la tabla mensual suman <b>1 punto extra</b> a la clasificación general.</p>
+    <p>La tabla del mes se cierra el día 1 y no se modifica. Si hay empate a puntos en el puesto 7, el punto extra lo reciben <b>todos los empatados</b>.</p>
+    <p>El punto extra va solo a la general: no cuenta para la tabla del mes siguiente.</p>
+  </div>
+
+  <div class="nrm">
+    <h3><span class="b">4</span>TEMPORADA</h3>
+    <p>Arranca en <b>agosto de 2026</b> y no se reinicia. La clasificación general acumula toda la temporada.</p>
+  </div>
+
+  <div class="nrm">
+    <h3><span class="b">5</span>CONDUCTA Y DECISIONES</h3>
+    <p>Las decisiones del cuerpo técnico sobre el resultado de la sesión son <b>definitivas e inapelables</b>. No se revisan resultados de sesiones cerradas.</p>
+    <p>La formación de los equipos la decide el cuerpo técnico. Nadie elige equipo.</p>
+    <p>Esto es una competición interna para <b>exigirnos entre nosotros</b>. Se compite a tope y se respeta el resultado. Protestas, reproches a un compañero o desconexión por ir perdiendo no tienen sitio aquí.</p>
+    <p>El cuerpo técnico puede <b>anular la puntuación</b> de una sesión o de un jugador por una actitud que no corresponda.</p>
+  </div>
+  <div class="foot">RACING CLUB PORTUENSE · 2026/27</div>
+</div>
+
+<nav>
+  <button class="on" onclick="nav('gen',this)">General</button>
+  <button onclick="nav('mes',this)">Mes</button>
+  <button onclick="nav('nrm',this)">Normas</button>
+</nav>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DATOS — PROVISIONAL EN MEMORIA (mismos datos simulados que la app
+   del cuerpo técnico). Al conectar Firebase esto se sustituye por
+   UNA lectura del documento denormalizado da_public/clasificacion.
+═══════════════════════════════════════════════════════════════ */
+const CLOUD='https://res.cloudinary.com/dprtymvge/image/upload/';
+const PLAYERS=[
+ {id:'p00',d:25,nick:'Nando Valencia',pos:'POR',photo:CLOUD+'Fernando_ysdpjs.jpg'},
+ {id:'p_jc',d:1,nick:'Jesús Castaño',pos:'POR',photo:CLOUD+'Jesus-Castaño_rabl6e.jpg'},
+ {id:'p13',d:13,nick:'Juanma',pos:'POR',photo:CLOUD+'Juanma_tvnog7.jpg'},
+ {id:'p15',d:15,nick:'Amengual',pos:'DEF',photo:CLOUD+'Amengual_ludzmk.jpg'},
+ {id:'p02',d:2,nick:'Carmelo',pos:'DEF',photo:CLOUD+'Carmelo_zinjg0.jpg'},
+ {id:'p20',d:20,nick:'Farrando',pos:'DEF',photo:CLOUD+'Manu-Farrando_awkrno.jpg'},
+ {id:'p21',d:21,nick:'Lainez',pos:'DEF',photo:CLOUD+'Dani-Lainez_okumzz.jpg'},
+ {id:'p05',d:5,nick:'Rodri',pos:'DEF',photo:CLOUD+'Rodri_t61gyf.jpg'},
+ {id:'p22',d:22,nick:'Víctor Olmo',pos:'DEF',photo:CLOUD+'Victor-Olmo_xq39iy.jpg'},
+ {id:'p_lo',d:null,nick:'Luis Ortega',pos:'DEF',photo:CLOUD+'Luis-Ortega_cyoleu.jpg'},
+ {id:'p08',d:8,nick:'Adri Cuevas',pos:'MED',photo:CLOUD+'Adri-Cuevas_k2ttdv.jpg'},
+ {id:'p04',d:4,nick:'Adri Rodríguez',pos:'MED',photo:CLOUD+'Adri-Rodriguez_gnxqas.jpg'},
+ {id:'p18',d:18,nick:'Brandon',pos:'MED',photo:CLOUD+'Brandon_t4oeu4.jpg'},
+ {id:'p24',d:24,nick:'Fuentes',pos:'MED',photo:CLOUD+'Alberto-Fuentes_ohkcmk.jpg'},
+ {id:'p06',d:6,nick:'Lolo Garrido',pos:'MED',photo:CLOUD+'Lolo-Garrido_zlkg18.jpg'},
+ {id:'p11',d:11,nick:'Rubén Sánchez',pos:'MED',photo:CLOUD+'Ruben-Sanchez_rsyg4a.jpg'},
+ {id:'p10',d:10,nick:'Hugo Rodríguez',pos:'MED',photo:CLOUD+'Hugo-Rodriguez_ddsebh.jpg'},
+ {id:'p07',d:7,nick:'Jacobo',pos:'MED',photo:CLOUD+'Jacobo_qlcylg.jpg'},
+ {id:'p_hp',d:17,nick:'Héctor Peña',pos:'DEL',photo:null},
+ {id:'p09',d:9,nick:'Javi Tamayo',pos:'DEL',photo:CLOUD+'Javi-Tamayo_cyuend.jpg'},
+ {id:'p12',d:12,nick:'Lupu',pos:'DEL',photo:CLOUD+'Lupu_im9wja.jpg'},
+ {id:'p19',d:19,nick:'Marcos',pos:'DEL',photo:CLOUD+'Marcos-Garcia_qtyu1a.jpg'},
+ {id:'p23',d:23,nick:'Marcos Talavera',pos:'DEL',photo:CLOUD+'Marcos-Talavera_k3leas.jpg'},
+ {id:'p_rs',d:14,nick:'Rodrigo Sanz',pos:'DEL',photo:null},
+];
+const SESSIONS=(function(){
+  let s=7; const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
+  const dates=['2026-08-01','2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'];
+  return dates.map((date,i)=>{
+    const pool=PLAYERS.filter(()=>rnd()>0.13);
+    const teams={}; const ts=['azul','verde','peto'];
+    pool.sort(()=>rnd()-.5).forEach((p,j)=>teams[p.id]=ts[j%3]);
+    const r=rnd();
+    const winners = r<0.68?[ts[Math.floor(rnd()*3)]]
+      : r<0.92?ts.slice().sort(()=>rnd()-.5).slice(0,2):ts.slice();
+    return {id:'s'+i,date,teams,winners};
+  });
+})();
+
+/* ══ MOTOR DE PUNTUACIÓN — idéntico al de la app del cuerpo técnico ══ */
+const mesDe=d=>d.slice(0,7);
+function ptsSesion(s,pid){
+  const t=s.teams[pid]; if(!t) return null;
+  if(s.winners.length===1) return s.winners[0]===t?3:0;
+  return s.winners.includes(t)?1:0;
+}
+function base(sessions){
+  const map={};
+  PLAYERS.forEach(p=>map[p.id]={...p,pts:0,j:0,v:0,e:0,dd:0,form:[]});
+  sessions.forEach(s=>PLAYERS.forEach(p=>{
+    const pt=ptsSesion(s,p.id); if(pt===null)return;
+    const r=map[p.id]; r.j++; r.pts+=pt; r.form.push(pt);
+    if(pt===3)r.v++; else if(pt===1)r.e++; else r.dd++;
+  }));
+  return map;
+}
+function ordena(map){
+  const arr=Object.values(map).filter(r=>r.j>0);
+  arr.forEach(r=>{r.pct=Math.round(r.v/r.j*100); r.racha=calcRacha(r.form);});
+  arr.sort((a,b)=>b.pts-a.pts||b.pct-a.pct||b.j-a.j||a.nick.localeCompare(b.nick));
+  let pos=0,prev=null;
+  arr.forEach((r,i)=>{if(prev===null||r.pts!==prev){pos=i+1;prev=r.pts;} r.pos=pos;});
+  return arr;
+}
+function tablaMes(mes){ return ordena(base(SESSIONS.filter(s=>mesDe(s.date)===mes))); }
+function standings(sessions){
+  const map=base(sessions);
+  const hoy=new Date().toISOString().slice(0,7);
+  [...new Set(sessions.map(s=>mesDe(s.date)))].filter(m=>m<hoy).forEach(m=>{
+    const t=tablaMes(m); if(!t.length)return;
+    const corte=t[Math.min(6,t.length-1)].pts;
+    t.filter(r=>r.pts>=corte).forEach(r=>{if(map[r.id])map[r.id].pts+=1;});
+  });
+  return ordena(map);
+}
+function calcRacha(form){
+  if(!form.length)return '';
+  const last=form[form.length-1]; let n=0;
+  if(last===3){for(let i=form.length-1;i>=0&&form[i]===3;i--)n++; return n>=2?n+' victorias':'';}
+  if(last===0)return '';
+  for(let i=form.length-1;i>=0&&form[i]>0;i--)n++;
+  return n>=2?n+' sin perder':'';
+}
+function movimientos(){
+  if(SESSIONS.length<2)return{};
+  const a=standings(SESSIONS), b=standings(SESSIONS.slice(0,-1));
+  const pb={}; b.forEach(r=>pb[r.id]=r.pos);
+  const mv={}; a.forEach(r=>mv[r.id]=pb[r.id]===undefined?0:pb[r.id]-r.pos);
+  return mv;
+}
+
+/* ══ RENDER ══ */
+const MESES=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+const av=p=>p.photo?`<img class="av-s" src="${p.photo}" alt="">`
+  :`<div class="av-i">${p.nick.slice(0,2).toUpperCase()}</div>`;
+
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on'); window.scrollTo(0,0);
+}
+
+function renderPodio(arr){
+  const o=[arr[1],arr[0],arr[2]].filter(Boolean);
+  document.getElementById('podio').innerHTML=o.map(r=>{
+    const cls=r.pos===1?'p1':'';
+    const im=r.photo?`<img class="pd-av" src="${r.photo}" alt="">`
+      :`<div class="pd-av pd-i">${r.nick.slice(0,2).toUpperCase()}</div>`;
+    return `<div class="pd ${cls}"><div class="pd-r">${r.pos}º</div>${im}
+      <div class="pd-n">${r.nick}</div><div class="pd-p">${r.pts}</div></div>`;
+  }).join('');
+}
+
+function renderLogros(arr){
+  const L=[];
+  const lider=arr[0];
+  if(lider) L.push({t:'Líder',n:lider.nick,v:lider.pts+' pts'});
+  const rachaV=arr.filter(r=>r.racha.includes('victorias'))
+    .sort((a,b)=>parseInt(b.racha)-parseInt(a.racha))[0];
+  if(rachaV) L.push({t:'Mejor racha',n:rachaV.nick,v:rachaV.racha});
+  const inv=arr.filter(r=>r.dd===0&&r.j>=3).sort((a,b)=>b.j-a.j)[0];
+  if(inv) L.push({t:'Invicto',n:inv.nick,v:inv.j+' sesiones sin perder'});
+  const pct=arr.filter(r=>r.j>=3).sort((a,b)=>b.pct-a.pct)[0];
+  if(pct) L.push({t:'Más victorias',n:pct.nick,v:pct.pct+'% ganadas'});
+  const cons=arr.slice().sort((a,b)=>b.j-a.j)[0];
+  if(cons) L.push({t:'Más presente',n:cons.nick,v:cons.j+' sesiones'});
+  document.getElementById('logros').innerHTML=L.map(x=>
+    `<div class="lg"><div class="lg-t">${x.t}</div><div class="lg-n">${x.n}</div><div class="lg-v">${x.v}</div></div>`).join('');
+}
+
+function filaForm(form){
+  return `<div class="form">${form.slice(-5).map(p=>{
+    const c=p===3?'v':p===1?'e':'d', l=p===3?'V':p===1?'E':'D';
+    return `<div class="fd ${c}">${l}</div>`;}).join('')}</div>`;
+}
+
+function renderGen(){
+  const arr=standings(SESSIONS);
+  if(!arr.length){document.getElementById('gen-box').innerHTML='<div class="empty">Aún no hay sesiones.</div>';return;}
+  renderPodio(arr); renderLogros(arr);
+  const mv=movimientos();
+  document.getElementById('gen-box').innerHTML=`<table class="tbl">
+   <thead><tr><th></th><th></th><th>Jugador</th><th class="c hide-s">Últimas 5</th>
+   <th class="c">J</th><th class="c">%V</th><th class="r">Pts</th></tr></thead>
+   <tbody>${arr.map(r=>{
+     const m=mv[r.id]||0, mc=m>0?'up':m<0?'dn':'eq', mt=m>0?'▲'+m:m<0?'▼'+Math.abs(m):'–';
+     return `<tr><td><div class="pos ${r.pos<=3?'top':''}">${r.pos}</div></td>
+       <td><span class="mv ${mc}">${mt}</span></td>
+       <td><div class="nmcell">${av(r)}<div style="min-width:0"><div class="n">${r.nick}</div>
+       ${r.racha?`<div class="racha">${r.racha}</div>`:''}</div></div></td>
+       <td class="c hide-s">${filaForm(r.form)}</td>
+       <td class="c num">${r.j}</td><td class="c num">${r.pct}%</td>
+       <td class="r"><span class="pts">${r.pts}</span></td></tr>`;
+   }).join('')}</tbody></table>`;
+}
+
+function renderMes(){
+  const mes=new Date().toISOString().slice(0,7);
+  const arr=tablaMes(mes);
+  document.getElementById('mes-t').textContent=MESES[+mes.slice(5,7)-1];
+  if(!arr.length){
+    document.getElementById('mes-d').textContent='Sin sesiones este mes.';
+    document.getElementById('mes-box').innerHTML='<div class="empty">Sin datos.</div>'; return;}
+  const corte=arr[Math.min(6,arr.length-1)].pts;
+  const nb=arr.filter(r=>r.pts>=corte).length;
+  document.getElementById('mes-d').innerHTML=
+    `Mes en curso. Los <b>7 primeros</b> ganan <b>+1 punto</b> para la general.<br>
+     Ahora mismo hay <b>${nb} jugadores</b> en zona de premio (corte en ${corte} pts).`;
+  document.getElementById('mes-box').innerHTML=`<table class="tbl">
+   <thead><tr><th></th><th>Jugador</th><th class="c hide-s">Últimas 5</th>
+   <th class="c">J</th><th class="c">%V</th><th class="r">Pts</th></tr></thead>
+   <tbody>${arr.map((r,i)=>{
+     const inb=r.pts>=corte;
+     const isCut=inb&&(i+1===nb);
+     return `<tr class="${inb?'bonus':''} ${isCut?'cut':''}">
+       <td><div class="pos ${r.pos<=3?'top':''}">${r.pos}</div></td>
+       <td><div class="nmcell">${av(r)}<span class="n">${r.nick}</span></div></td>
+       <td class="c hide-s">${filaForm(r.form)}</td>
+       <td class="c num">${r.j}</td><td class="c num">${r.pct}%</td>
+       <td class="r"><span class="pts">${r.pts}</span></td></tr>`;
+   }).join('')}</tbody></table>`;
+}
+
+/* ══ TARJETA PARA COMPARTIR (canvas, sin fotos para evitar CORS) ══ */
+async function compartir(){
+  const arr=standings(SESSIONS).slice(0,10);
+  const W=1080,H=1350,c=document.createElement('canvas');
+  c.width=W;c.height=H;const x=c.getContext('2d');
+  x.fillStyle='#0B0B0B';x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(232,25,44,.09)';x.lineWidth=3;
+  for(let i=-H;i<W;i+=46){x.beginPath();x.moveTo(i,0);x.lineTo(i+H,H);x.stroke();}
+  x.fillStyle='#E8192C';x.beginPath();x.arc(96,120,46,0,7);x.fill();
+  x.fillStyle='#fff';x.font='40px "Bebas Neue"';x.textAlign='center';x.fillText('DA',96,135);
+  x.textAlign='left';x.fillStyle='#F3F3F1';x.font='72px "Bebas Neue"';x.fillText('DOBLE ÁREA',162,116);
+  x.fillStyle='#E8192C';x.font='700 24px "Barlow Condensed"';
+  x.fillText('LA BATALLA DE LOS PETOS',163,152);
+  x.fillStyle='#E8192C';x.fillRect(60,196,W-120,4);
+  let y=278;
+  arr.forEach(r=>{
+    x.fillStyle=r.pos<=3?'#E8192C':'#1C1C1C';x.beginPath();x.arc(96,y-11,26,0,7);x.fill();
+    x.fillStyle=r.pos<=3?'#fff':'#8A8A8A';x.font='700 26px "JetBrains Mono"';x.textAlign='center';
+    x.fillText(r.pos,96,y-2);
+    x.textAlign='left';x.fillStyle='#F3F3F1';x.font='600 40px "Barlow Condensed"';x.fillText(r.nick,150,y);
+    x.fillStyle='#5A5A5A';x.font='400 26px "JetBrains Mono"';x.textAlign='right';
+    x.fillText(r.j+'J',W-190,y-2);
+    x.fillStyle='#F3F3F1';x.font='700 42px "JetBrains Mono"';x.fillText(r.pts,W-70,y+2);
+    x.textAlign='left';x.strokeStyle='#1A1A1A';x.lineWidth=2;
+    x.beginPath();x.moveTo(60,y+24);x.lineTo(W-60,y+24);x.stroke();
+    y+=96;
+  });
+  x.fillStyle='#5A5A5A';x.font='400 22px "JetBrains Mono"';x.textAlign='center';
+  x.fillText('RACING CLUB PORTUENSE · TEMPORADA 26/27',W/2,H-56);
+  const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+  const file=new File([blob],'doble-area.png',{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Doble Área'});return;}catch(e){}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='doble-area.png';a.click();
+}
+
+renderGen(); renderMes();
+</script>
+</body>
+</html>
