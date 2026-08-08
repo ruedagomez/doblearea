@@ -109,6 +109,40 @@ const DA = (function () {
     return ordena(map);
   }
 
+  /* ── NAVEGACIÓN POR MESES Y PALMARÉS ── */
+
+  /* Desplaza un 'YYYY-MM' n meses adelante o atrás */
+  function mesSuma(m, n) {
+    let y = +m.slice(0, 4), mm = +m.slice(5, 7) + n;
+    y += Math.floor((mm - 1) / 12);
+    mm = ((mm - 1) % 12 + 12) % 12 + 1;
+    return y + '-' + String(mm).padStart(2, '0');
+  }
+
+  /* Meses de la temporada que tienen alguna sesión, de antiguo a reciente */
+  function mesesConSesiones(sessions) {
+    return [...new Set(sessions.map(s => mesDe(s.date)))]
+      .filter(m => m >= TEMPORADA_DESDE).sort();
+  }
+
+  const esCerrado = mes => mes < mesActual();
+
+  function campeonMes(players, sessions, mes) {
+    const t = tablaMes(players, sessions, mes);
+    return t.length ? t[0] : null;
+  }
+
+  /* Meses ya cerrados con su campeón y sus premiados, del más reciente
+     al más antiguo. Alimenta la sección de Palmarés. */
+  function palmares(players, sessions) {
+    return mesesCerrados(sessions).slice().reverse().map(m => ({
+      mes: m,
+      nombre: nombreMes(m),
+      campeon: campeonMes(players, sessions, m),
+      premiados: premiadosMes(players, sessions, m)
+    }));
+  }
+
   /* Racha viva a partir de la última sesión jugada */
   function calcRacha(form) {
     if (!form.length) return '';
@@ -154,9 +188,10 @@ const DA = (function () {
   const fechaCorta = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
 
   return { TEAMS, TEAM_LBL, TEMPORADA_DESDE, DESEMPATE_POR_PCT, MESES,
-           mesDe, mesActual, nombreMes, fechaCorta,
+           mesDe, mesActual, nombreMes, fechaCorta, mesSuma,
            ptsSesion, acumula, ordena, tablaMes, premiadosMes,
-           mesesCerrados, general, calcRacha, movimientos, logros };
+           mesesCerrados, mesesConSesiones, esCerrado, campeonMes, palmares,
+           general, calcRacha, movimientos, logros };
 })();
 
 /* ═══════════════════════════════════════════════════════════════════════
