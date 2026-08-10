@@ -362,9 +362,12 @@ function renderNTeams() {
 }
 function setNEq(n) {
   if (n === nEq) return;
-  const fuera = DA.TEAMS.slice(n);
-  Object.keys(assign).forEach(id => { if (fuera.indexOf(assign[id]) >= 0) delete assign[id]; });
-  podio = podio.filter(t => fuera.indexOf(t) < 0);
+  /* Los petos que se usan cambian con el número de equipos (con 2 se
+     juega verde contra sin peto), así que hay que liberar a quien
+     estuviera en un peto que ya no entra. */
+  const dentro = DA.equiposDe(n);
+  Object.keys(assign).forEach(id => { if (dentro.indexOf(assign[id]) < 0) delete assign[id]; });
+  podio = podio.filter(t => dentro.indexOf(t) >= 0);
   nEq = n; renderNTeams(); renderGrid(); renderRes(); updRes();
 }
 
