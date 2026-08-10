@@ -6,8 +6,10 @@
    las dos tablas siguen coincidiendo por construcción.
 
    REGLAMENTO
-   · La sesión la disputan de 2 a 4 equipos (azul, verde, sin peto y
-     amarillo, en ese orden según cuántos haya).
+   · La sesión la disputan de 2 a 4 equipos:
+        2 equipos ... verde y sin peto
+        3 equipos ... azul, verde y sin peto
+        4 equipos ... azul, verde, sin peto y amarillo
    · No hay empates. Siempre sale un orden.
         Con 3 o 4 equipos ... 1º = 3 pts · 2º = 1 pt · resto = 0
         Con 2 equipos ....... 1º = 3 pts · 2º = 0
@@ -31,12 +33,18 @@ const DA = (function () {
   const UMBRAL_AUSENCIAS = 2;    // a partir de aquí, candidato a exención
   const TEMPORADA_DESDE = '2026-08';
 
-  /* Orden fijo. Con 2 equipos se usan los dos primeros, con 3 los tres
-     primeros, y el amarillo solo entra cuando hay 4. */
+  /* Orden fijo para mostrar. Qué petos se usan depende de cuántos
+     equipos haya: con 2 se juega verde contra sin peto, el azul entra
+     con el tercero y el amarillo con el cuarto. */
   const TEAMS = ['azul', 'verde', 'peto', 'amarillo'];
   const TEAM_LBL = { azul: 'Azul', verde: 'Verde', peto: 'Sin peto', amarillo: 'Amarillo' };
   const TEAM_ABBR = { azul: 'AZ', verde: 'VE', peto: 'S/P', amarillo: 'AM' };
-  const equiposDe = n => TEAMS.slice(0, n);
+  const SETS = {
+    2: ['verde', 'peto'],
+    3: ['azul', 'verde', 'peto'],
+    4: ['azul', 'verde', 'peto', 'amarillo']
+  };
+  const equiposDe = n => (SETS[n] || SETS[3]).slice();
 
   const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO',
                  'AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
