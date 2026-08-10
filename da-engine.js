@@ -2,60 +2,92 @@
    DOBLE ÁREA · LA BATALLA DE LOS PETOS
    MOTOR DE PUNTUACIÓN — fichero compartido
    Lo cargan las DOS apps (cuerpo técnico y jugadores). Es la única
-   fuente del reglamento: cualquier cambio de reglas se toca AQUÍ y solo
-   aquí, y las dos tablas siguen coincidiendo por construcción.
+   fuente del reglamento: cualquier cambio se toca AQUÍ y solo aquí, y
+   las dos tablas siguen coincidiendo por construcción.
 
    REGLAMENTO
-   · Ganador único de la sesión ....... 3 pts a todos sus jugadores
-   · Sin ganador (empate arriba) ...... 1 pt a los equipos empatados
-   · Resto ............................ 0 pts
+   · La sesión la disputan de 2 a 4 equipos (azul, verde, sin peto y
+     amarillo, en ese orden según cuántos haya).
+   · No hay empates. Siempre sale un orden.
+        Con 3 o 4 equipos ... 1º = 3 pts · 2º = 1 pt · resto = 0
+        Con 2 equipos ....... 1º = 3 pts · 2º = 0
    · Solo puntúa quien juega. No jugar no resta.
-   · Premio del mes: +1 pt a la general para los 8 primeros del mes
-     (8 = un equipo completo de Doble Área).
-     El mes solo reparte cuando está CERRADO (no el mes en curso).
-     El +1 no cuenta para la tabla del mes siguiente.
+   · Campeón del mes: trofeo o diploma físico e insignia permanente en
+     el histórico. NO da puntos extra.
+   · Los 8 últimos de cada mes cerrado pagan 5 €. El cuerpo técnico
+     puede eximir a un jugador; entonces paga el inmediatamente
+     superior en la tabla del mes, de forma que siempre pagan 8.
+   · Un jugador sin equipo en una sesión cuenta como ausente. A partir
+     de 2 ausencias en el mes queda marcado como candidato a exención.
    · Temporada desde agosto 2026, sin reinicio.
 ═══════════════════════════════════════════════════════════════════════ */
 const DA = (function () {
 
-  /* ── ÚNICO INTERRUPTOR DE REGLAS ──────────────────────────────────
-     true  → a igualdad de puntos en el corte manda el % de victorias.
-     false → premio para todos los empatados en el último puesto.
-     Ver nota al final del fichero.                                   */
-  const DESEMPATE_POR_PCT = true;
-
-  /* Cuántos jugadores se llevan el +1 cada mes. 8 = un equipo entero. */
-  const PREMIADOS_MES = 8;
-
-  const TEAMS = ['azul', 'verde', 'peto'];
-  const TEAM_LBL = { azul: 'Azul', verde: 'Verde', peto: 'Sin peto' };
+  /* ── PARÁMETROS DEL REGLAMENTO ── */
+  const PTS_3O4 = [3, 1];        // con 3 o 4 equipos: 1º y 2º puntúan
+  const PTS_2 = [3];             // con 2 equipos solo puntúa el ganador
+  const MULTADOS_MES = 8;        // cuántos pagan cada mes cerrado
+  const MULTA_EUROS = 5;
+  const UMBRAL_AUSENCIAS = 2;    // a partir de aquí, candidato a exención
   const TEMPORADA_DESDE = '2026-08';
+
+  /* Orden fijo. Con 2 equipos se usan los dos primeros, con 3 los tres
+     primeros, y el amarillo solo entra cuando hay 4. */
+  const TEAMS = ['azul', 'verde', 'peto', 'amarillo'];
+  const TEAM_LBL = { azul: 'Azul', verde: 'Verde', peto: 'Sin peto', amarillo: 'Amarillo' };
+  const TEAM_ABBR = { azul: 'AZ', verde: 'VE', peto: 'S/P', amarillo: 'AM' };
+  const equiposDe = n => TEAMS.slice(0, n);
+
   const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO',
                  'AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-
   const mesDe = d => (d || '').slice(0, 7);
   const mesActual = () => new Date().toISOString().slice(0, 7);
   const nombreMes = m => MESES[+m.slice(5, 7) - 1] || '';
+  const fechaCorta = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+  const esCerrado = mes => mes < mesActual();
 
-  /* Puntos de un jugador en una sesión. null = no jugó. */
+  function mesSuma(m, n) {
+    let y = +m.slice(0, 4), mm = +m.slice(5, 7) + n;
+    y += Math.floor((mm - 1) / 12);
+    mm = ((mm - 1) % 12 + 12) % 12 + 1;
+    return y + '-' + String(mm).padStart(2, '0');
+  }
+
+  /* Puntos de un jugador en una sesión. null = no jugó.
+     s.podio = ['azul','verde'] → 1º y 2º.
+     Se mantiene lectura de s.winners por si quedara alguna sesión
+     grabada con el formato antiguo. */
   function ptsSesion(s, pid) {
     const t = s.teams ? s.teams[pid] : null;
     if (!t) return null;
-    if (!s.winners || !s.winners.length) return 0;
-    if (s.winners.length === 1) return s.winners[0] === t ? 3 : 0;
-    return s.winners.includes(t) ? 1 : 0;
+    if (s.podio && s.podio.length) {
+      /* La escala depende de cuántos equipos jugaron: con solo dos, el
+         segundo es el perdedor y no se lleva nada. */
+      const n = s.nEquipos || equiposEnSesion(s).length;
+      const esc = n <= 2 ? PTS_2 : PTS_3O4;
+      const i = s.podio.indexOf(t);
+      return i >= 0 && i < esc.length ? esc[i] : 0;
+    }
+    if (s.winners && s.winners.length) {          // formato antiguo
+      if (s.winners.length === 1) return s.winners[0] === t ? 3 : 0;
+      return s.winners.includes(t) ? 1 : 0;
+    }
+    return 0;
   }
 
-  /* Acumulado en bruto, sin bonus */
+  /* Equipos que participaron en una sesión, en orden fijo */
+  const equiposEnSesion = s =>
+    TEAMS.filter(t => Object.values(s.teams || {}).indexOf(t) >= 0);
+
   function acumula(players, sessions) {
     const map = {};
-    players.forEach(p => map[p.id] = { ...p, pts: 0, j: 0, v: 0, e: 0, dd: 0, form: [] });
+    players.forEach(p => map[p.id] = { ...p, pts: 0, j: 0, v: 0, seg: 0, dd: 0, form: [] });
     sessions.forEach(s => players.forEach(p => {
       const pt = ptsSesion(s, p.id);
       if (pt === null) return;
       const r = map[p.id];
       r.j++; r.pts += pt; r.form.push(pt);
-      if (pt === 3) r.v++; else if (pt === 1) r.e++; else r.dd++;
+      if (pt === 3) r.v++; else if (pt === 1) r.seg++; else r.dd++;
     }));
     return map;
   }
@@ -78,74 +110,91 @@ const DA = (function () {
     return arr;
   }
 
+  const enTemporada = sessions => sessions.filter(s => mesDe(s.date) >= TEMPORADA_DESDE);
+
+  /* CLASIFICACIÓN GENERAL — acumulado puro, sin bonus de ningún tipo */
+  function general(players, sessions) {
+    return ordena(acumula(players, enTemporada(sessions)));
+  }
+
   function tablaMes(players, sessions, mes) {
     return ordena(acumula(players, sessions.filter(s => mesDe(s.date) === mes)));
   }
 
-  /* Quién entra en el premio de un mes concreto */
-  function premiadosMes(players, sessions, mes) {
+  /* Sesiones disputadas en un mes */
+  const sesionesDeMes = (sessions, mes) => sessions.filter(s => mesDe(s.date) === mes).length;
+
+  /* Ausencias de cada jugador en el mes: sesiones del mes a las que no
+     fue asignado a ningún equipo. Solo cuenta para quien jugó al menos
+     una: el que no aparece en todo el mes no entra en la tabla. */
+  function ausenciasMes(players, sessions, mes) {
+    const tot = sesionesDeMes(sessions, mes), a = {};
+    tablaMes(players, sessions, mes).forEach(r => a[r.id] = tot - r.j);
+    return a;
+  }
+
+  /* Candidatos a exención: 2 o más ausencias en el mes */
+  function candidatosExencion(players, sessions, mes) {
+    const a = ausenciasMes(players, sessions, mes);
+    return Object.keys(a).filter(id => a[id] >= UMBRAL_AUSENCIAS);
+  }
+
+  const exDe = (ex, mes) => (ex && ex[mes]) ? ex[mes] : [];
+
+  /* Los 8 últimos del mes, saltando a los eximidos. Al saltar uno, el
+     hueco lo ocupa el inmediatamente superior en la tabla, de modo que
+     el número de multados no cambia. El orden es el oficial (puntos →
+     % victorias → sesiones), todo visible en la tabla. */
+  function multadosMes(players, sessions, mes, ex) {
     const t = tablaMes(players, sessions, mes);
-    if (!t.length) return [];
-    const c = t[Math.min(PREMIADOS_MES - 1, t.length - 1)];
-    if (DESEMPATE_POR_PCT)
-      return t.filter(r => r.pts > c.pts || (r.pts === c.pts && r.pct >= c.pct));
-    return t.filter(r => r.pts >= c.pts);
+    const exentos = {}; exDe(ex, mes).forEach(id => exentos[id] = 1);
+    const n = Math.min(MULTADOS_MES, t.filter(r => !exentos[r.id]).length);
+    const out = [];
+    for (let i = t.length - 1; i >= 0 && out.length < n; i--) {
+      if (exentos[t[i].id]) continue;
+      out.push(t[i]);
+    }
+    return out.reverse();
   }
 
-  /* Meses ya cerrados que han repartido premio */
-  function mesesCerrados(sessions) {
-    const hoy = mesActual();
-    return [...new Set(sessions.map(s => mesDe(s.date)))]
-      .filter(m => m >= TEMPORADA_DESDE && m < hoy).sort();
-  }
-
-  /* CLASIFICACIÓN GENERAL — acumulado + bonus de meses cerrados */
-  function general(players, sessions) {
-    const ss = sessions.filter(s => mesDe(s.date) >= TEMPORADA_DESDE);
-    const map = acumula(players, ss);
-    mesesCerrados(ss).forEach(m => {
-      premiadosMes(players, ss, m).forEach(r => {
-        if (map[r.id]) { map[r.id].pts += 1; map[r.id].bonus = (map[r.id].bonus || 0) + 1; }
-      });
-    });
-    return ordena(map);
-  }
-
-  /* ── NAVEGACIÓN POR MESES Y PALMARÉS ── */
-
-  /* Desplaza un 'YYYY-MM' n meses adelante o atrás */
-  function mesSuma(m, n) {
-    let y = +m.slice(0, 4), mm = +m.slice(5, 7) + n;
-    y += Math.floor((mm - 1) / 12);
-    mm = ((mm - 1) % 12 + 12) % 12 + 1;
-    return y + '-' + String(mm).padStart(2, '0');
-  }
-
-  /* Meses de la temporada que tienen alguna sesión, de antiguo a reciente */
-  function mesesConSesiones(sessions) {
-    return [...new Set(sessions.map(s => mesDe(s.date)))]
-      .filter(m => m >= TEMPORADA_DESDE).sort();
-  }
-
-  const esCerrado = mes => mes < mesActual();
-
-  function campeonMes(players, sessions, mes) {
+  const campeonMes = (players, sessions, mes) => {
     const t = tablaMes(players, sessions, mes);
     return t.length ? t[0] : null;
-  }
+  };
 
-  /* Meses ya cerrados con su campeón y sus premiados, del más reciente
-     al más antiguo. Alimenta la sección de Palmarés. */
-  function palmares(players, sessions) {
+  function mesesConSesiones(sessions) {
+    return [...new Set(enTemporada(sessions).map(s => mesDe(s.date)))].sort();
+  }
+  const mesesCerrados = sessions => mesesConSesiones(sessions).filter(esCerrado);
+
+  /* Histórico de meses cerrados, del más reciente al más antiguo */
+  function palmares(players, sessions, ex) {
     return mesesCerrados(sessions).slice().reverse().map(m => ({
       mes: m,
       nombre: nombreMes(m),
       campeon: campeonMes(players, sessions, m),
-      premiados: premiadosMes(players, sessions, m)
+      multados: multadosMes(players, sessions, m, ex)
     }));
   }
 
-  /* Racha viva a partir de la última sesión jugada */
+  /* Insignias: cuántos meses ha ganado cada jugador */
+  function titulos(players, sessions) {
+    const t = {};
+    mesesCerrados(sessions).forEach(m => {
+      const c = campeonMes(players, sessions, m);
+      if (c) t[c.id] = (t[c.id] || 0) + 1;
+    });
+    return t;
+  }
+
+  /* Euros acumulados por jugador en toda la temporada */
+  function multasTemporada(players, sessions, ex) {
+    const e = {};
+    mesesCerrados(sessions).forEach(m =>
+      multadosMes(players, sessions, m, ex).forEach(r => e[r.id] = (e[r.id] || 0) + MULTA_EUROS));
+    return e;
+  }
+
   function calcRacha(form) {
     if (!form.length) return '';
     const last = form[form.length - 1];
@@ -156,52 +205,61 @@ const DA = (function () {
     }
     if (last === 0) return '';
     for (let i = form.length - 1; i >= 0 && form[i] > 0; i--) n++;
-    return n >= 2 ? n + ' sin perder' : '';
+    return n >= 2 ? n + ' puntuando' : '';
   }
 
-  /* Puestos ganados o perdidos respecto a antes de la última sesión */
   function movimientos(players, sessions) {
-    const ss = sessions.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const ss = enTemporada(sessions).slice().sort((a, b) => a.date.localeCompare(b.date));
     if (ss.length < 2) return {};
-    const ahora = general(players, ss);
-    const antes = general(players, ss.slice(0, -1));
+    const ahora = general(players, ss), antes = general(players, ss.slice(0, -1));
     const pa = {}; antes.forEach(r => pa[r.id] = r.pos);
     const mv = {}; ahora.forEach(r => mv[r.id] = pa[r.id] === undefined ? 0 : pa[r.id] - r.pos);
     return mv;
   }
 
-  /* Tarjetas de logros de la portada */
-  function logros(arr) {
+  function logros(arr, tit) {
     const L = [];
     if (!arr.length) return L;
     L.push({ t: 'Líder', n: arr[0].nick, v: arr[0].pts + ' pts' });
-    const ra = arr.filter(r => r.racha.includes('victorias'))
+    const ra = arr.filter(r => r.racha.indexOf('victorias') >= 0)
                   .sort((a, b) => parseInt(b.racha) - parseInt(a.racha))[0];
     if (ra) L.push({ t: 'Mejor racha', n: ra.nick, v: ra.racha });
-    const inv = arr.filter(r => r.dd === 0 && r.j >= 3).sort((a, b) => b.j - a.j)[0];
-    if (inv) L.push({ t: 'Invicto', n: inv.nick, v: inv.j + ' sesiones sin perder' });
     const pc = arr.filter(r => r.j >= 3).sort((a, b) => b.pct - a.pct)[0];
     if (pc) L.push({ t: 'Más victorias', n: pc.nick, v: pc.pct + '% ganadas' });
+    if (tit) {
+      const mv = arr.filter(r => tit[r.id]).sort((a, b) => tit[b.id] - tit[a.id])[0];
+      if (mv) L.push({ t: 'Más títulos', n: mv.nick, v: tit[mv.id] + (tit[mv.id] > 1 ? ' meses' : ' mes') });
+    }
     const co = arr.slice().sort((a, b) => b.j - a.j)[0];
     if (co) L.push({ t: 'Más presente', n: co.nick, v: co.j + ' sesiones' });
     return L;
   }
 
-  const fechaCorta = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+  /* Miniatura de Cloudinary: recorta y comprime en origen en vez de
+     descargar el retrato completo. Es lo que hacía lenta la carga. */
+  function thumb(url, px) {
+    if (!url) return null;
+    const i = url.indexOf('/upload/');
+    if (i < 0) return url;
+    return url.slice(0, i + 8) + 'c_fill,g_face,w_' + px + ',h_' + px + ',q_auto,f_auto/' + url.slice(i + 8);
+  }
 
-  return { TEAMS, TEAM_LBL, TEMPORADA_DESDE, DESEMPATE_POR_PCT, PREMIADOS_MES, MESES,
-           mesDe, mesActual, nombreMes, fechaCorta, mesSuma,
-           ptsSesion, acumula, ordena, tablaMes, premiadosMes,
-           mesesCerrados, mesesConSesiones, esCerrado, campeonMes, palmares,
-           general, calcRacha, movimientos, logros };
+  return { TEAMS, TEAM_LBL, TEAM_ABBR, equiposDe, equiposEnSesion,
+           PTS_2, PTS_3O4, MULTADOS_MES, MULTA_EUROS, UMBRAL_AUSENCIAS,
+           TEMPORADA_DESDE, MESES,
+           mesDe, mesActual, nombreMes, fechaCorta, mesSuma, esCerrado,
+           ptsSesion, acumula, ordena, general, tablaMes,
+           sesionesDeMes, ausenciasMes, candidatosExencion,
+           multadosMes, campeonMes, mesesConSesiones, mesesCerrados,
+           palmares, titulos, multasTemporada,
+           calcRacha, movimientos, logros, thumb };
 })();
 
 /* ═══════════════════════════════════════════════════════════════════════
-   NOTA SOBRE DESEMPATE_POR_PCT
-   Los puntos van de 3 en 3, así que en un mes hay pocos valores distintos
-   repartidos entre 24 jugadores y los empates son masivos. Sin desempate,
-   el corte se lleva por delante a todo el grupo empatado y el premio
-   acaba cayendo en bastantes más de los previstos. Desempatar por % de
-   victorias lo mantiene cerca de PREMIADOS_MES. Por eso está activado;
-   es el único cambio necesario para volver atrás.
+   EXENCIONES
+   Se guardan en Firestore en da_exentos/{YYYY-MM} con la forma
+   { ids: ['jugador1','jugador2'] } y se pasan a las funciones de multa
+   como un objeto { '2026-08': [...], '2026-09': [...] }.
+   Son SIEMPRE manuales: 2 ausencias marcan al jugador como candidato,
+   pero no le eximen solas. La decisión es del cuerpo técnico.
 ═══════════════════════════════════════════════════════════════════════ */
