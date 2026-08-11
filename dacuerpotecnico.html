@@ -101,9 +101,11 @@ h2{font-family:var(--disp);font-size:20px;letter-spacing:.6px}
 .rc .cn{font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:4px}
 .rc.p1{border-color:var(--red);background:rgba(232,25,44,.12)}
 .rc.p2{border-color:var(--gold);background:rgba(217,165,33,.10)}
+.rc.p3{border-color:#8A8A8A;background:rgba(138,138,138,.10)}
 .rc .medal{position:absolute;top:-1px;right:-1px;font-family:var(--mono);font-size:10px;font-weight:700;
   padding:2px 5px}
 .rc.p1 .medal{background:var(--red);color:#fff} .rc.p2 .medal{background:var(--gold);color:var(--black)}
+.rc.p3 .medal{background:#8A8A8A;color:var(--black)}
 .res-note{margin-top:9px;font-size:13px;color:var(--mid);text-align:center;min-height:19px;line-height:1.35}
 .res-note b{color:var(--off);font-weight:700}
 
@@ -211,7 +213,7 @@ h2{font-family:var(--disp);font-size:20px;letter-spacing:.6px}
   </div>
   <div class="counts" id="counts"></div>
   <div class="pgrid" id="grid"></div>
-  <div class="sec-lbl">Podio · 1º y 2º</div>
+  <div class="sec-lbl" id="res-lbl">Podio</div>
   <div class="res" id="res"></div>
   <div class="res-note" id="res-note"></div>
   <div class="row2">
@@ -404,12 +406,20 @@ function renderCounts() {
 }
 
 /* ── Podio ── */
+/* Cuántos puestos hay que marcar según el número de equipos: con 2
+   solo hace falta el ganador (el otro se deduce y no puntúa), con 3
+   hasta el segundo, con 4 hasta el tercero. */
+function capPodio() { return nEq === 2 ? 1 : nEq === 3 ? 2 : 3; }
+
 function renderRes() {
   const c = conteo();
+  const cap = capPodio();
+  document.getElementById('res-lbl').textContent =
+    'Podio · hasta ' + (cap === 1 ? '1º' : cap === 2 ? '1º y 2º' : '1º, 2º y 3º');
   document.getElementById('res').className = 'res n' + nEq;
   document.getElementById('res').innerHTML = eq().map(t => {
     const i = podio.indexOf(t);
-    const cls = i === 0 ? ' p1' : i === 1 ? ' p2' : '';
+    const cls = i === 0 ? ' p1' : i === 1 ? ' p2' : i === 2 ? ' p3' : '';
     const med = i >= 0 ? '<span class="medal">' + (i + 1) + 'º</span>' : '';
     return '<div class="rc ' + t + cls + '" onclick="tapPodio(\'' + t + '\')">' + med +
       '<div class="d"></div><div class="nm">' + DA.TEAM_LBL[t].toUpperCase() + '</div>' +
@@ -419,19 +429,28 @@ function renderRes() {
 function tapPodio(t) {
   const i = podio.indexOf(t);
   if (i >= 0) podio = podio.slice(0, i);
-  else if (podio.length < 2) podio.push(t);
-  /* Con 2 equipos el segundo se deduce solo: no hay nada que elegir. */
+  else if (podio.length < capPodio()) podio.push(t);
+  /* Con 2 equipos el segundo se deduce solo: no hay nada que elegir,
+     y no puntúa, pero queda registrado para el historial. */
   if (nEq === 2 && podio.length === 1) podio.push(eq().filter(x => x !== podio[0])[0]);
   renderRes(); updRes();
 }
 function updRes() {
   renderCounts(); renderRes();
   const c = conteo(), vac = eq().filter(t => c[t] === 0);
+  const cap = capPodio(), esc = DA.escalaPts(nEq);
   let ok = true, msg;
-  if (vac.length) { ok = false; msg = 'Falta gente en <b>' + vac.map(t => DA.TEAM_LBL[t]).join(', ') + '</b>.'; }
-  else if (podio.length < 2) { ok = false; msg = podio.length ? 'Marca el <b>2º</b>.' : 'Marca el <b>1º</b>.'; }
-  else msg = '1º <b>' + DA.TEAM_LBL[podio[0]] + '</b> · 3 pts a ' + c[podio[0]] + '  |  2º <b>' +
-             DA.TEAM_LBL[podio[1]] + '</b> · 1 pt a ' + c[podio[1]];
+  if (vac.length) {
+    ok = false; msg = 'Falta gente en <b>' + vac.map(t => DA.TEAM_LBL[t]).join(', ') + '</b>.';
+  } else if (podio.length < cap) {
+    ok = false;
+    const orden = ['1º', '2º', '3º'];
+    msg = 'Marca el <b>' + orden[podio.length] + '</b>.';
+  } else {
+    const puestos = nEq === 2 ? [0] : podio.slice(0, cap).map((t, i) => i);
+    msg = puestos.map(i => (i + 1) + 'º <b>' + DA.TEAM_LBL[podio[i]] + '</b> · ' + esc[i] +
+      (esc[i] === 1 ? ' pt' : ' pts') + ' a ' + c[podio[i]]).join('  |  ');
+  }
   document.getElementById('res-note').innerHTML = msg;
   document.getElementById('btn-save').disabled = !ok;
 }
