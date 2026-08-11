@@ -11,8 +11,9 @@
         3 equipos ... azul, verde y sin peto
         4 equipos ... azul, verde, sin peto y amarillo
    · No hay empates. Siempre sale un orden.
-        Con 3 o 4 equipos ... 1º = 3 pts · 2º = 1 pt · resto = 0
-        Con 2 equipos ....... 1º = 3 pts · 2º = 0
+        Con 2 equipos ... 1º = 3 pts · 2º = 0
+        Con 3 equipos ... 1º = 3 pts · 2º = 1 pt · 3º = 0
+        Con 4 equipos ... 1º = 3 pts · 2º = 2 pts · 3º = 1 pt · 4º = 0
    · Solo puntúa quien juega. No jugar no resta.
    · Campeón del mes: trofeo o diploma físico e insignia permanente en
      el histórico. NO da puntos extra.
@@ -26,8 +27,9 @@
 const DA = (function () {
 
   /* ── PARÁMETROS DEL REGLAMENTO ── */
-  const PTS_3O4 = [3, 1];        // con 3 o 4 equipos: 1º y 2º puntúan
   const PTS_2 = [3];             // con 2 equipos solo puntúa el ganador
+  const PTS_3 = [3, 1];          // con 3 equipos: 1º y 2º puntúan
+  const PTS_4 = [3, 2, 1];       // con 4 equipos: 1º, 2º y 3º puntúan
   const MULTADOS_MES = 8;        // cuántos pagan cada mes cerrado
   const MULTA_EUROS = 5;
   const UMBRAL_AUSENCIAS = 2;    // a partir de aquí, candidato a exención
@@ -61,6 +63,13 @@ const DA = (function () {
     return y + '-' + String(mm).padStart(2, '0');
   }
 
+  /* Escala de puntos según cuántos equipos compitieron esa sesión */
+  function escalaPts(n) {
+    if (n <= 2) return PTS_2;
+    if (n === 3) return PTS_3;
+    return PTS_4;
+  }
+
   /* Puntos de un jugador en una sesión. null = no jugó.
      s.podio = ['azul','verde'] → 1º y 2º.
      Se mantiene lectura de s.winners por si quedara alguna sesión
@@ -69,10 +78,8 @@ const DA = (function () {
     const t = s.teams ? s.teams[pid] : null;
     if (!t) return null;
     if (s.podio && s.podio.length) {
-      /* La escala depende de cuántos equipos jugaron: con solo dos, el
-         segundo es el perdedor y no se lleva nada. */
       const n = s.nEquipos || equiposEnSesion(s).length;
-      const esc = n <= 2 ? PTS_2 : PTS_3O4;
+      const esc = escalaPts(n);
       const i = s.podio.indexOf(t);
       return i >= 0 && i < esc.length ? esc[i] : 0;
     }
@@ -252,8 +259,8 @@ const DA = (function () {
     return url.slice(0, i + 8) + 'c_fill,g_face,w_' + px + ',h_' + px + ',q_auto,f_auto/' + url.slice(i + 8);
   }
 
-  return { TEAMS, TEAM_LBL, TEAM_ABBR, equiposDe, equiposEnSesion,
-           PTS_2, PTS_3O4, MULTADOS_MES, MULTA_EUROS, UMBRAL_AUSENCIAS,
+  return { TEAMS, TEAM_LBL, TEAM_ABBR, equiposDe, equiposEnSesion, escalaPts,
+           PTS_2, PTS_3, PTS_4, MULTADOS_MES, MULTA_EUROS, UMBRAL_AUSENCIAS,
            TEMPORADA_DESDE, MESES,
            mesDe, mesActual, nombreMes, fechaCorta, mesSuma, esCerrado,
            ptsSesion, acumula, ordena, general, tablaMes,
