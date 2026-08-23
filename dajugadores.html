@@ -79,7 +79,8 @@ nav button.on{color:var(--off);border-top-color:var(--red)}
 .form{display:flex;gap:3px;justify-content:center}
 .fd{width:15px;height:15px;border-radius:50%;font-family:var(--mono);font-size:8px;font-weight:700;
   display:flex;align-items:center;justify-content:center}
-.fd.v{background:var(--verde);color:#fff} .fd.e{background:#6B6B6B;color:#fff}
+.fd.v{background:var(--verde);color:#fff} .fd.s2{background:#1E5FD8;color:#fff}
+.fd.e{background:#6B6B6B;color:#fff}
 .fd.d{background:var(--panel2);color:var(--faint);border:1px solid var(--bdr)}
 .racha{font-size:11px;color:var(--verde);font-weight:600;letter-spacing:.3px}
 .hide-s{display:none} @media(min-width:560px){.hide-s{display:table-cell}}
@@ -294,10 +295,16 @@ function nav(id, el) {
   window.scrollTo(0, 0);
 }
 function pinta() { if (listo) { renderGen(); renderMes(); } }
+/* Muestra los puntos REALES de cada sesión (0/1/2/3), no un intento
+   de adivinar la posición. Con 3 equipos el 2º vale 1 pt; con 4, el 2º
+   vale 2 y el 3º vale 1 — así que "1 punto" no siempre es "2º puesto".
+   Antes se etiquetaba todo lo que no fuera 3 o 1 como si no hubiera
+   puntuado, y un 2º puesto de 4 equipos (2 pts) salía con el mismo
+   punto gris de quien queda último con 0. */
 function filaForm(form) {
   return '<div class="form">' + form.slice(-5).map(p => {
-    const c = p === 3 ? 'v' : p === 1 ? 'e' : 'd', l = p === 3 ? '1' : p === 1 ? '2' : '·';
-    return '<div class="fd ' + c + '">' + l + '</div>';
+    const c = p === 3 ? 'v' : p === 2 ? 's2' : p === 1 ? 'e' : 'd';
+    return '<div class="fd ' + c + '">' + p + '</div>';
   }).join('') + '</div>';
 }
 
