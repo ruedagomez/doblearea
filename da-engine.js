@@ -102,7 +102,13 @@ const DA = (function () {
       if (pt === null) return;
       const r = map[p.id];
       r.j++; r.pts += pt; r.form.push(pt);
-      if (pt === 3) r.v++; else if (pt === 1) r.seg++; else r.dd++;
+      /* v = 1º puesto · dd = último puesto, 0 pts · seg = cualquier
+         puesto intermedio que puntúa (2º con 3 equipos, 2º o 3º con 4).
+         Antes esto daba por hecho una escala de solo 3/1/0 y con 4
+         equipos etiquetaba el 2º puesto (2 pts) como derrota. No movía
+         el total de puntos (pts se suma aparte y siempre fue correcto),
+         pero sí el desglose interno v/seg/dd. */
+      if (pt === 3) r.v++; else if (pt === 0) r.dd++; else r.seg++;
     }));
     return map;
   }
