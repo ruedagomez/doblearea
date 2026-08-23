@@ -419,8 +419,12 @@ function renderRes() {
   document.getElementById('res').className = 'res n' + nEq;
   document.getElementById('res').innerHTML = eq().map(t => {
     const i = podio.indexOf(t);
-    const cls = i === 0 ? ' p1' : i === 1 ? ' p2' : i === 2 ? ' p3' : '';
-    const med = i >= 0 ? '<span class="medal">' + (i + 1) + 'º</span>' : '';
+    /* Con 2 equipos el perdedor se auto-rellena en podio[1] solo para
+       guardar el resultado completo en el historial, pero no puntúa.
+       No le pintamos medalla de "2º": parecería un premio que no es. */
+    const cuenta = !(nEq === 2 && i === 1);
+    const cls = !cuenta ? '' : i === 0 ? ' p1' : i === 1 ? ' p2' : i === 2 ? ' p3' : '';
+    const med = i >= 0 && cuenta ? '<span class="medal">' + (i + 1) + 'º</span>' : '';
     return '<div class="rc ' + t + cls + '" onclick="tapPodio(\'' + t + '\')">' + med +
       '<div class="d"></div><div class="nm">' + DA.TEAM_LBL[t].toUpperCase() + '</div>' +
       '<div class="cn">' + c[t] + '</div></div>';
