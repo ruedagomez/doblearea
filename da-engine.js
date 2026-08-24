@@ -251,8 +251,6 @@ const DA = (function () {
       const mv = arr.filter(r => tit[r.id]).sort((a, b) => tit[b.id] - tit[a.id])[0];
       if (mv) L.push({ t: 'Más títulos', n: mv.nick, v: tit[mv.id] + (tit[mv.id] > 1 ? ' meses' : ' mes') });
     }
-    const co = arr.slice().sort((a, b) => b.j - a.j)[0];
-    if (co) L.push({ t: 'Más presente', n: co.nick, v: co.j + ' sesiones' });
     return L;
   }
 
