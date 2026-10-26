@@ -263,6 +263,69 @@ const DA = (function () {
     return url.slice(0, i + 8) + 'c_fill,g_face,w_' + px + ',h_' + px + ',q_auto,f_auto/' + url.slice(i + 8);
   }
 
+  /* ── IMPRESIÓN ─────────────────────────────────────────────────────
+     Compartida por las dos apps: monta una hoja en blanco y negro en
+     #da-print, oculta el resto de la página y llama a window.print(). */
+  const esc = x => String(x == null ? '' : x).replace(/[&<>"]/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function imprimir(titulo, sub, cuerpo) {
+    if (!document.getElementById('da-print-css')) {
+      const st = document.createElement('style'); st.id = 'da-print-css';
+      st.textContent = '#da-print{display:none}@media print{' +
+        'html,body{background:#fff!important;padding:0!important}' +
+        'body>*:not(#da-print){display:none!important}' +
+        '#da-print{display:block!important;color:#000;font-family:Arial,Helvetica,sans-serif}' +
+        '#da-print h1{font-size:22px;margin:0 0 2px}#da-print .sub{font-size:12px;color:#444;margin-bottom:14px}' +
+        '#da-print table{width:100%;border-collapse:collapse;font-size:13px}' +
+        '#da-print th{text-align:left;font-size:10px;text-transform:uppercase;border-bottom:2px solid #000;padding:4px 5px}' +
+        '#da-print td{padding:5px;border-bottom:1px solid #bbb}' +
+        '#da-print .c{text-align:center}#da-print .r{text-align:right}' +
+        '#da-print tr.mul td{background:#e6e6e6;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+        '#da-print tr.ex td{color:#777}' +
+        '#da-print .pie{margin-top:12px;font-size:12px}' +
+        '@page{margin:14mm}}';
+      document.head.appendChild(st);
+    }
+    let d = document.getElementById('da-print');
+    if (!d) { d = document.createElement('div'); d.id = 'da-print'; document.body.appendChild(d); }
+    d.innerHTML = '<h1>' + esc(titulo) + '</h1><div class="sub">' + esc(sub) + '</div>' + cuerpo;
+    window.print();
+  }
+
+  /* Tabla del mes. roster = jugadores. */
+  function imprimeMes(roster, sessions, mes, ex) {
+    const arr = tablaMes(roster, sessions, mes);
+    const nom = nombreMes(mes) + ' ' + mes.slice(0, 4);
+    if (!arr.length) { imprimir('Doble Área · ' + nom, 'Sin sesiones este mes', ''); return; }
+    const aus = ausenciasMes(roster, sessions, mes), exs = {};
+    exDe(ex, mes).forEach(id => exs[id] = 1);
+    const mul = multadosMes(roster, sessions, mes, ex), ids = {};
+    mul.forEach(r => ids[r.id] = 1);
+    const filas = arr.map(r => '<tr class="' + (ids[r.id] ? 'mul' : '') + ' ' + (exs[r.id] ? 'ex' : '') + '">' +
+      '<td class="c">' + r.pos + '</td><td>' + esc(r.nick) + '' + '</td>' +
+      '<td class="c">' + (aus[r.id] || 0) + '</td><td class="c">' + r.j + '</td>' +
+      '<td class="c">' + r.pts + '</td><td class="r">' +
+      (ids[r.id] ? MULTA_EUROS + ' €' : exs[r.id] ? 'Exento' : '') + '</td></tr>').join('');
+    imprimir('Doble Área · ' + nom,
+      sesionesDeMes(sessions, mes) + ' sesiones · ' + (esCerrado(mes) ? 'mes cerrado' : 'mes en curso (provisional)'),
+      '<table><thead><tr><th class="c">Pos</th><th>Nombre</th><th class="c">Aus.</th><th class="c">J</th>' +
+      '<th class="c">Pts</th><th class="r">Multa</th></tr></thead><tbody>' + filas + '</tbody></table>' +
+      '<div class="pie">' + mul.length + ' multados · total ' + (mul.length * MULTA_EUROS) + ' €</div>');
+  }
+
+  /* Tabla general: activos en la tabla; títulos y euros con la plantilla completa. */
+  function imprimeGeneral(activos, todos, sessions, ex) {
+    const arr = general(activos, sessions), tit = titulos(todos, sessions), eur = multasTemporada(todos, sessions, ex);
+    const filas = arr.map(r => '<tr><td class="c">' + r.pos + '</td><td>' + esc(r.nick) +
+      (tit[r.id] ? ' ★' + (tit[r.id] > 1 ? tit[r.id] : '') : '') + '</td><td class="c">' + r.j +
+      '</td><td class="c">' + r.pct + '%</td><td class="c">' + (eur[r.id] ? eur[r.id] + ' €' : '') +
+      '</td><td class="r"><b>' + r.pts + '</b></td></tr>').join('');
+    imprimir('Doble Área · Clasificación general', 'Temporada desde ' + nombreMes(TEMPORADA_DESDE) + ' ' + TEMPORADA_DESDE.slice(0, 4),
+      '<table><thead><tr><th class="c">Pos</th><th>Jugador</th><th class="c">J</th><th class="c">%V</th>' +
+      '<th class="c">Multas</th><th class="r">Pts</th></tr></thead><tbody>' + filas + '</tbody></table>');
+  }
+
   return { TEAMS, TEAM_LBL, TEAM_ABBR, equiposDe, equiposEnSesion, escalaPts,
            PTS_2, PTS_3, PTS_4, MULTADOS_MES, MULTA_EUROS, UMBRAL_AUSENCIAS,
            TEMPORADA_DESDE, MESES,
@@ -271,7 +334,7 @@ const DA = (function () {
            sesionesDeMes, ausenciasMes, candidatosExencion,
            multadosMes, campeonMes, mesesConSesiones, mesesCerrados,
            palmares, titulos, multasTemporada,
-           calcRacha, movimientos, logros, thumb };
+           calcRacha, movimientos, logros, thumb, imprimir, imprimeMes, imprimeGeneral };
 })();
 
 /* ═══════════════════════════════════════════════════════════════════════
