@@ -245,6 +245,14 @@ const CFG = {
   appId: "1:240772501081:web:ef7c84365eefeb64892b48"
 };
 let PLAYERS = [], SESSIONS = [], EXENTOS = {}, listo = false;
+/* Los dados de baja mantienen sus puntos en Firestore (nunca se
+   borran), pero desaparecen de la clasificación general y de la
+   tarjeta para compartir: la tabla "de ahora mismo" es solo entre
+   quien sigue en el equipo. El histórico (palmarés, insignias, multas
+   de meses ya jugados) usa SIEMPRE la plantilla completa y no se toca
+   aquí — un campeón de agosto lo sigue siendo aunque cause baja en
+   octubre, y una multa de un mes que jugó sigue siendo real. */
+const activos = () => PLAYERS.filter(p => p.active !== false);
 
 (async () => {
   try {
@@ -315,11 +323,13 @@ function renderGen() {
     w.innerHTML = '<div class="empty">La competición todavía no ha empezado.<br>En cuanto se juegue la primera sesión aparecerá aquí.</div>';
     return;
   }
-  const arr = DA.general(PLAYERS, SESSIONS);
+  const arr = DA.general(activos(), SESSIONS);
   if (!arr.length) { w.innerHTML = '<div class="empty">Sin datos.</div>'; return; }
+  /* Títulos e histórico SÍ con la plantilla completa: un campeón de
+     mes lo sigue siendo aunque hoy esté de baja. */
   const tit = DA.titulos(PLAYERS, SESSIONS);
   const eur = DA.multasTemporada(PLAYERS, SESSIONS, EXENTOS);
-  const mv = DA.movimientos(PLAYERS, SESSIONS);
+  const mv = DA.movimientos(activos(), SESSIONS);
   const lg = DA.logros(arr, tit);
 
   const podio = [arr[1], arr[0], arr[2]].filter(Boolean).map(r =>
@@ -360,6 +370,7 @@ function renderGen() {
         '<td class="r"><span class="pts">' + r.pts + '</span></td></tr>';
     }).join('') + '</tbody></table>' +
     '<button class="btn" onclick="compartir()">📲 Compartir clasificación</button>' +
+    '<button class="btn" style="margin-top:8px" onclick="DA.imprimeGeneral(activos(), PLAYERS, SESSIONS, EXENTOS)">🖨 Imprimir clasificación general</button>' +
     '<div class="foot">RACING CLUB PORTUENSE · 2026/27</div>';
 }
 
@@ -427,12 +438,13 @@ function renderMes() {
         '<td class="c num">' + r.j + '</td><td class="c num">' + r.pct + '%</td>' +
         '<td class="r"><span class="pts">' + r.pts + '</span></td></tr>';
     }).join('') + '</tbody></table>' + aviso +
+    '<button class="btn" onclick="DA.imprimeMes(PLAYERS, SESSIONS, mesVista, EXENTOS)">🖨 Imprimir clasificación del mes</button>' +
     '<div class="foot">RACING CLUB PORTUENSE · 2026/27</div>';
 }
 
 /* ═══════════ TARJETA PARA EL GRUPO ═══════════ */
 async function compartir() {
-  const arr = DA.general(PLAYERS, SESSIONS).slice(0, 10);
+  const arr = DA.general(activos(), SESSIONS).slice(0, 10);
   const tit = DA.titulos(PLAYERS, SESSIONS);
   const W = 1080, H = 1350, cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
