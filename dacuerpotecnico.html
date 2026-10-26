@@ -178,6 +178,7 @@ h2{font-family:var(--disp);font-size:20px;letter-spacing:.6px}
 .exbtn.on{border-color:var(--amarillo);color:var(--amarillo)}
 .tag-ex{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--amarillo);margin-left:5px}
 .tag-eu{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--red);margin-left:5px}
+.btn-print{margin-top:12px;background:transparent;border:1px solid var(--bdr);color:var(--off);padding:12px;width:100%;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;cursor:pointer}
 .multa{background:var(--panel);border-left:3px solid var(--red);padding:11px 13px;margin-top:12px;
   font-size:13px;color:var(--mid);line-height:1.5}
 .multa b{color:var(--off);font-weight:700}
@@ -226,6 +227,7 @@ h2{font-family:var(--disp);font-size:20px;letter-spacing:.6px}
   <h2>Clasificación general</h2>
   <p class="hint">La misma tabla que ven los jugadores.</p>
   <div id="cla-box"></div>
+  <button class="btn-print" onclick="imprimirGeneral()">🖨 Imprimir clasificación general</button>
 </div>
 
 <div class="page" id="pg-his">
@@ -256,6 +258,7 @@ h2{font-family:var(--disp);font-size:20px;letter-spacing:.6px}
   <h2>Mes y multas</h2>
   <p class="hint">Marca EXENTO a quien no deba pagar por ausencia o lesión. El hueco lo cubre el jugador inmediatamente superior.</p>
   <div id="mes-wrap"></div>
+  <button class="btn-print" onclick="imprimirMes()">🖨 Imprimir clasificación del mes</button>
 </div>
 
 <nav>
@@ -336,6 +339,7 @@ function setSync(s, t) {
 }
 function fallo(m, e) { console.error(m, e); toast(m, true); }
 const activos = () => PLAYERS.filter(p => p.active !== false);
+
 
 /* ═══════════════ ESTADO ═══════════════ */
 let nEq = 3, assign = {}, podio = [], editId = null;
@@ -512,7 +516,12 @@ async function saveSession() {
 function renderCla() {
   const box = document.getElementById('cla-box');
   if (!SESSIONS.length) { box.innerHTML = '<div class="empty">Sin sesiones registradas.</div>'; return; }
-  const arr = DA.general(PLAYERS, SESSIONS), tit = DA.titulos(PLAYERS, SESSIONS);
+  /* Solo activos en la tabla: los dados de baja mantienen sus puntos
+     en Firestore pero no aparecen aquí. Títulos y multas de temporada
+     SÍ con la plantilla completa: un campeón de mes lo sigue siendo
+     aunque hoy esté de baja, y una multa de un mes que jugó es real
+     independientemente de si sigue en el equipo. */
+  const arr = DA.general(activos(), SESSIONS), tit = DA.titulos(PLAYERS, SESSIONS);
   const eur = DA.multasTemporada(PLAYERS, SESSIONS, EXENTOS);
   const totalEur = Object.values(eur).reduce((a, b) => a + b, 0);
   box.innerHTML = '<table class="tbl"><thead><tr><th></th><th>Jugador</th>' +
@@ -590,6 +599,16 @@ async function toggleExento(mes, pid) {
     await FS.setDoc(FS.doc(db, 'da_exentos', mes), { ids: actuales });
     toast(i >= 0 ? 'Exención retirada' : 'Jugador exento');
   } catch (e) { fallo('No se pudo guardar la exención', e); }
+}
+
+/* ── Impresión ── */
+function imprimirMes() {
+  if (!mesVista) mesVista = DA.mesActual();
+  DA.imprimeMes(PLAYERS, SESSIONS, mesVista, EXENTOS);
+}
+function imprimirGeneral() {
+  if (!SESSIONS.length) return toast('Sin sesiones', true);
+  DA.imprimeGeneral(activos(), PLAYERS, SESSIONS, EXENTOS);
 }
 
 /* ── Historial ── */
