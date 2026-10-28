@@ -292,7 +292,7 @@ const CFG_RL = {
 };
 
 let FS = {}, db = null, dbRL = null;
-let PLAYERS = [], SESSIONS = [], EXENTOS = {};
+let PLAYERS = [], SESSIONS = [], EXENTOS = {}, CIERRES = {};
 
 const ready = (async () => {
   const [{ initializeApp }, fs] = await Promise.all([
@@ -326,6 +326,12 @@ function listeners() {
     EXENTOS = {}; s.docs.forEach(d => EXENTOS[d.id] = (d.data().ids || []));
     refresh();
   }, e => fallo('Fallo leyendo las exenciones', e));
+
+  /* Cierres de mes: un documento por mes cerrado y confirmado */
+  FS.onSnapshot(FS.collection(db, 'da_cierres'), s => {
+    CIERRES = {}; s.docs.forEach(d => CIERRES[d.id] = d.data());
+    refresh();
+  }, e => fallo('Fallo leyendo los cierres de mes', e));
 }
 function refresh() {
   const a = document.querySelector('.page.on'); if (!a) return;
@@ -589,9 +595,95 @@ function renderMes() {
     '<div class="multa">' + nSes + ' sesiones este mes · <b>' + mul.length + ' multados</b> = <b>' +
     (mul.length * DA.MULTA_EUROS) + ' €</b>' +
     ((EXENTOS[mes] || []).length ? ' · ' + (EXENTOS[mes] || []).length + ' exentos' : '') +
-    (cerrado ? '' : '<br>Mes en curso: esto todavía puede cambiar.') + '</div>';
+    (cerrado ? '' : '<br>Mes en curso: esto todavía puede cambiar.') + '</div>' +
+    panelCierre(mes, cerrado, mul);
 }
+function panelCierre(mes, cerrado, mul) {
+  if (!cerrado) return '';
+  const c = CIERRES[mes];
+  if (c) {
+    return '<div class="multa" style="border-left-color:var(--verde)">✓ <b>Mes confirmado</b> · ' +
+      (c.fineIds || []).length + ' multas registradas en Multas y Asistencia (' + c.importe + ' € c/u).' +
+      '<br><button class="exbtn" style="margin-top:8px" onclick="deshacerCierre(\'' + mes + '\')">Deshacer cierre</button></div>';
+  }
+  if (!mul.length) return '';
+  return '<div class="multa">Mes terminado. Revisa clasificación y exentos; al confirmar se registran ' +
+    mul.length + ' multas en Racing Lab.' +
+    '<br><button class="btn btn-r" style="margin-top:8px" onclick="cerrarMes(\'' + mes + '\')">Confirmar cierre y generar multas</button></div>';
+}
+
+/* ── Cierre de mes → multas en Racing Lab ──
+   Una multa por jugador multado, con id fijo da_{mes}_{jugador}: confirmar
+   dos veces no duplica. Las multas se escriben ANTES que el documento de
+   cierre; si algo falla a medias no queda cierre y se puede reintentar. */
+const finDeMes = mes => {
+  const y = +mes.slice(0, 4), m = +mes.slice(5, 7);
+  return mes + '-' + String(new Date(y, m, 0).getDate()).padStart(2, '0');
+};
+async function importeMulta() {
+  try {
+    const d = await FS.getDoc(FS.doc(dbRL, 'fineTypes', 'rm14'));
+    const a = d.exists() ? d.data().amount : null;
+    if (typeof a === 'number' && a > 0) return a;
+  } catch (e) { console.warn('fineTypes/rm14 no legible, uso importe por defecto', e); }
+  return DA.MULTA_EUROS;
+}
+async function cerrarMes(mes) {
+  if (CIERRES[mes] || !DA.esCerrado(mes)) return;
+  const tabla = DA.tablaMes(PLAYERS, SESSIONS, mes);
+  const mul = DA.multadosMes(PLAYERS, SESSIONS, mes, EXENTOS);
+  if (!mul.length) return toast('No hay multados este mes', true);
+  const nombre = DA.nombreMes(mes) + ' ' + mes.slice(0, 4);
+  const ex = (EXENTOS[mes] || []).length;
+  if (!confirm('Cerrar ' + nombre + '\n\nMultados (' + mul.length + '):\n' +
+      mul.map(r => ' · ' + r.pos + 'º ' + r.nick).join('\n') +
+      '\n\nExentos: ' + ex + '\n\nSe registrarán en Multas y Asistencia. ¿Confirmar?')) return;
+  try {
+    await ready;
+    const importe = await importeMulta();
+    const ids = [];
+    for (const r of mul) {
+      const fid = 'da_' + mes + '_' + r.id;
+      const ya = await FS.getDoc(FS.doc(dbRL, 'fines', fid));
+      if (!ya.exists()) {
+        await FS.setDoc(FS.doc(dbRL, 'fines', fid), {
+          playerId: r.id, playerName: r.nick, esStaff: false, esExterno: false,
+          typeId: 'rm14', typeName: 'Doble Área',
+          amount: importe, date: finDeMes(mes), recurrent: 'no', paid: false,
+          notes: 'Doble Área · ' + nombre + ' · puesto ' + r.pos + ' de ' + tabla.length,
+          auto: true, origen: 'doblearea', mesDoblearea: mes,
+          createdAt: FS.serverTimestamp()
+        });
+      }
+      ids.push(fid);
+    }
+    await FS.setDoc(FS.doc(db, 'da_cierres', mes), {
+      fecha: FS.serverTimestamp(), importe, fineIds: ids,
+      multados: mul.map(r => ({ id: r.id, nick: r.nick, pos: r.pos })),
+      exentos: EXENTOS[mes] || []
+    });
+    toast(ids.length + ' multas registradas en Racing Lab');
+  } catch (e) { fallo('No se pudo cerrar el mes (no se ha guardado el cierre; puedes reintentar)', e); }
+}
+async function deshacerCierre(mes) {
+  const c = CIERRES[mes]; if (!c) return;
+  try {
+    await ready;
+    const ids = c.fineIds || [], pagadas = [];
+    for (const fid of ids) {
+      const d = await FS.getDoc(FS.doc(dbRL, 'fines', fid));
+      if (d.exists() && d.data().paid) pagadas.push(d.data().playerName || fid);
+    }
+    if (pagadas.length) return toast('No se puede deshacer: ya pagadas ' + pagadas.join(', '), true);
+    if (!confirm('Se borrarán ' + ids.length + ' multas de Multas y Asistencia y el mes volverá a quedar abierto a cambios. ¿Seguro?')) return;
+    for (const fid of ids) await FS.deleteDoc(FS.doc(dbRL, 'fines', fid));
+    await FS.deleteDoc(FS.doc(db, 'da_cierres', mes));
+    toast('Cierre deshecho');
+  } catch (e) { fallo('No se pudo deshacer el cierre', e); }
+}
+
 async function toggleExento(mes, pid) {
+  if (CIERRES[mes]) return toast('Mes confirmado: deshaz el cierre para cambiar exentos', true);
   const actuales = (EXENTOS[mes] || []).slice();
   const i = actuales.indexOf(pid);
   if (i >= 0) actuales.splice(i, 1); else actuales.push(pid);
